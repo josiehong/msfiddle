@@ -45,6 +45,7 @@ if not is_download_command and not check_models_exist():
     )
 
 __all__ = [
+    "__version__",
     "MS2FNet_tcn",
     "FDRNet",
     "formula_refinement",

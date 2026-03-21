@@ -170,6 +170,10 @@ cython_debug/
 # Ruff stuff:
 .ruff_cache/
 
+# macOS
+.DS_Store
+docs/.DS_Store
+
 # PyPI configuration file
 .pypirc
 

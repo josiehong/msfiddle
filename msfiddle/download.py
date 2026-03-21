@@ -12,7 +12,12 @@ import argparse
 from pathlib import Path
 from tqdm import tqdm
 
-FIDDLE_RELEASE = "v1.0.0"  # Update this when new model weights are released in FIDDLE
+from importlib.metadata import version as _get_version, PackageNotFoundError as _PackageNotFoundError
+
+try:
+    FIDDLE_RELEASE = f"v{_get_version('msfiddle')}"
+except _PackageNotFoundError:
+    FIDDLE_RELEASE = "v0.0.0"
 
 MODEL_URLS = {
     "fiddle_tcn_qtof": f"https://github.com/JosieHong/FIDDLE/releases/download/{FIDDLE_RELEASE}/fiddle_tcn_qtof.zip",
