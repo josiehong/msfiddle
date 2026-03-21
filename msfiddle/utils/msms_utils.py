@@ -2,14 +2,11 @@ import numpy as np
 import re
 from tqdm import tqdm
 
-from rdkit import Chem
-
-# ignore the warning
-from rdkit import RDLogger
-
-RDLogger.DisableLog("rdApp.*")
+from rdkit import Chem, RDLogger
 from rdkit.Chem import AllChem
 from rdkit.Chem.rdMolDescriptors import CalcMolFormula
+
+RDLogger.DisableLog("rdApp.*")
 
 from .mol_utils import ATOMS_WEIGHT, monoisotopic_mass_calculator
 
@@ -108,6 +105,21 @@ def sdf2mgf(path, prefix):
 
 
 def filter_spec(spectra, config, type2charge):
+    """Filter and clean a list of spectra according to a configuration dict.
+
+    Applies sequential filters: instrument type/name, MS level, atom count/type,
+    precursor type, peak count, m/z range, and ppm mass error.
+
+    Args:
+            spectra: List of spectra dicts in MGF format.
+            config: Dict of filter thresholds (keys: 'instrument_type', 'ms_level',
+                    'atom_type', 'precursor_type', 'min_peak_num', 'min_mz', 'max_mz',
+                    'ppm_tolerance', etc.).
+            type2charge: Dict mapping precursor type string to charge int.
+
+    Returns:
+            tuple: (clean_spectra, smiles_list) — filtered spectra and their SMILES.
+    """
     clean_spectra = []
     smiles_list = []
 
@@ -230,13 +242,15 @@ def filter_spec(spectra, config, type2charge):
 
 
 def simulate_experimental_mz(theoretical_mz, relative_mass_tolerance_ppm):
-    """
-    Simulate experimental precursor m/z value by shifting the theoretical value
+    """Simulate experimental precursor m/z by shifting the theoretical value
     within a Gaussian distribution of mass deviations.
 
-    :param theoretical_mz: Theoretical precursor m/z value.
-    :param relative_mass_tolerance_ppm: Relative mass tolerance in parts per million (ppm).
-    :return: Simulated experimental precursor m/z value.
+    Args:
+        theoretical_mz: Theoretical precursor m/z value.
+        relative_mass_tolerance_ppm: Relative mass tolerance in ppm.
+
+    Returns:
+        float: Simulated experimental precursor m/z value.
     """
 
     # Calculate the standard deviation of the Gaussian distribution as 1/3 of the relative mass tolerance
@@ -252,11 +266,33 @@ def simulate_experimental_mz(theoretical_mz, relative_mass_tolerance_ppm):
 
 
 def ce2nce(ce, precursor_mz, charge):
+    """Convert absolute collision energy (eV) to normalized collision energy (NCE).
+
+    Args:
+            ce: Collision energy in eV.
+            precursor_mz: Precursor m/z value.
+            charge: Precursor charge state (int, 1–8).
+
+    Returns:
+            float: Normalized collision energy (dimensionless).
+    """
     charge_factor = {1: 1, 2: 0.9, 3: 0.85, 4: 0.8, 5: 0.75, 6: 0.75, 7: 0.75, 8: 0.75}
     return ce * 500 * charge_factor[charge] / precursor_mz
 
 
 def precursor_mz_calculator(precursor_type, mass):
+    """Compute the expected precursor m/z from neutral monoisotopic mass.
+
+    Args:
+            precursor_type: Adduct string, e.g. '[M+H]+'.
+            mass: Neutral monoisotopic mass in Da.
+
+    Returns:
+            float: Theoretical precursor m/z.
+
+    Raises:
+            ValueError: If precursor_type is not supported.
+    """
     if precursor_type == "[M+H]+":
         return mass + ATOMS_WEIGHT["H"]
     elif precursor_type == "[M+2H]2+":
@@ -300,6 +336,20 @@ def precursor_mz_calculator(precursor_type, mass):
 
 
 def mass_calculator(precursor_type, precursor_mz):
+    """Back-calculate neutral monoisotopic mass from observed precursor m/z.
+
+    The inverse of precursor_mz_calculator.
+
+    Args:
+            precursor_type: Adduct string, e.g. '[M+H]+'.
+            precursor_mz: Observed precursor m/z.
+
+    Returns:
+            float: Neutral monoisotopic mass in Da.
+
+    Raises:
+            ValueError: If precursor_type is not supported.
+    """
     if precursor_type == "[M+H]+":
         return precursor_mz - ATOMS_WEIGHT["H"]
     elif precursor_type == "[M+2H]2+":

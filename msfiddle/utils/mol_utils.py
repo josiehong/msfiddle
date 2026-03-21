@@ -67,6 +67,15 @@ ATOMS_INDEX_re = {
 
 
 def monoisotopic_mass_calculator(x, mode):
+    """Calculate the monoisotopic mass from a molecule or formula string.
+
+    Args:
+            x: RDKit Mol object (mode='mol') or molecular formula string (mode='f').
+            mode: 'mol' to accept an RDKit Mol, 'f' to accept a formula string.
+
+    Returns:
+            float: Monoisotopic mass in Da.
+    """
     assert mode in ["mol", "f"], "Invalid mode: {}".format(mode)
 
     if mode == "mol":
@@ -78,6 +87,14 @@ def monoisotopic_mass_calculator(x, mode):
 
 
 def dict_to_formula(formula_dict):
+    """Convert an atom-count dict back to a molecular formula string.
+
+    Args:
+            formula_dict: Mapping of atom symbol to count, e.g. {'C': 10, 'H': 12}.
+
+    Returns:
+            str: Molecular formula string, e.g. 'C10H12'.
+    """
     formula = ""
     for k, v in formula_dict.items():
         if v == 1:
@@ -88,6 +105,15 @@ def dict_to_formula(formula_dict):
 
 
 def formula_to_dict(formula):
+    """Parse a molecular formula string into an atom-count dict.
+
+    Args:
+            formula: Molecular formula string, e.g. 'C10H12N2O3'.
+
+    Returns:
+            dict: Mapping of atom symbol to count, e.g. {'C': 10, 'H': 12, ...}.
+                  Returns {} if formula is not a string.
+    """
     if not isinstance(
         formula, str
     ):  # it is possible that all the predicted formula is None in BUDDY & SIRIUS
@@ -98,6 +124,16 @@ def formula_to_dict(formula):
 
 
 def formula_to_vector(formula):
+    """Convert a molecular formula to a fixed-length atom-count vector.
+
+    The vector order follows ATOMS_INDEX (C, H, O, N, F, S, Cl, P, B, Br, I, Na, K).
+
+    Args:
+            formula: Molecular formula string.
+
+    Returns:
+            list[int]: Length-13 vector of atom counts.
+    """
     vector = [0] * len(ATOMS_INDEX)
     formula_dict = formula_to_dict(formula)
 
@@ -109,6 +145,15 @@ def formula_to_vector(formula):
 
 
 def vector_to_formula(vec, withH=True):
+    """Convert a fixed-length atom-count vector back to a formula string.
+
+    Args:
+            vec: Sequence of atom counts aligned with ATOMS_INDEX.
+            withH: If False, hydrogen is omitted from the output string.
+
+    Returns:
+            str: Molecular formula string.
+    """
     formula = ""
     for idx, v in enumerate(vec):
         v = round(float(v))
@@ -127,7 +172,6 @@ def vector_to_formula(vec, withH=True):
 if __name__ == "__main__":
     from rdkit import Chem
 
-    # ignore the warning
     from rdkit import RDLogger
 
     RDLogger.DisableLog("rdApp.*")
