@@ -116,7 +116,3 @@ msfiddle --test_data /path/to/data.mgf \
   publisher={Nature Publishing Group UK London}
 }
 ```
-
-## License
-
-This project is licensed under the [Apache License 2.0](LICENSE).

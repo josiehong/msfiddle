@@ -4,13 +4,25 @@ msfiddle: A package for predicting chemical formulas from tandem mass spectra
 
 __version__ = "0.1.0"
 
-# Import main components to make them available at package level
-from .model_tcn import MS2FNet_tcn, FDRNet
 from .utils.mol_utils import vector_to_formula, formula_to_vector
 from .utils.msms_utils import mass_calculator
 from .utils.refine_utils import formula_refinement
-from .main import test_step, rerank_by_fdr
 from .download import check_models_exist, download_models, get_model_path
+
+
+def __getattr__(name):
+    """Lazy-load torch-dependent components only when accessed."""
+    if name in ('MS2FNet_tcn', 'FDRNet'):
+        from .model_tcn import MS2FNet_tcn, FDRNet
+        globals()['MS2FNet_tcn'] = MS2FNet_tcn
+        globals()['FDRNet'] = FDRNet
+        return globals()[name]
+    if name in ('test_step', 'rerank_by_fdr'):
+        from .main import test_step, rerank_by_fdr
+        globals()['test_step'] = test_step
+        globals()['rerank_by_fdr'] = rerank_by_fdr
+        return globals()[name]
+    raise AttributeError(f"module 'msfiddle' has no attribute {name!r}")
 
 # Check if models are available and print a message if not
 import os
