@@ -13,11 +13,13 @@ from pathlib import Path
 from tqdm import tqdm
 
 
+FIDDLE_RELEASE = "v1.0.0"  # Update this when new model weights are released in FIDDLE
+
 MODEL_URLS = {
-    "fiddle_tcn_qtof": "https://github.com/JosieHong/FIDDLE/releases/download/v1.0.0/fiddle_tcn_qtof.zip",
-    "fiddle_fdr_qtof": "https://github.com/JosieHong/FIDDLE/releases/download/v1.0.0/fiddle_fdr_qtof.zip",
-    "fiddle_tcn_orbitrap": "https://github.com/JosieHong/FIDDLE/releases/download/v1.0.0/fiddle_tcn_orbitrap.zip",
-    "fiddle_fdr_orbitrap": "https://github.com/JosieHong/FIDDLE/releases/download/v1.0.0/fiddle_fdr_orbitrap.zip"
+    "fiddle_tcn_qtof":     f"https://github.com/JosieHong/FIDDLE/releases/download/{FIDDLE_RELEASE}/fiddle_tcn_qtof.zip",
+    "fiddle_fdr_qtof":     f"https://github.com/JosieHong/FIDDLE/releases/download/{FIDDLE_RELEASE}/fiddle_fdr_qtof.zip",
+    "fiddle_tcn_orbitrap": f"https://github.com/JosieHong/FIDDLE/releases/download/{FIDDLE_RELEASE}/fiddle_tcn_orbitrap.zip",
+    "fiddle_fdr_orbitrap": f"https://github.com/JosieHong/FIDDLE/releases/download/{FIDDLE_RELEASE}/fiddle_fdr_orbitrap.zip",
 }
 
 

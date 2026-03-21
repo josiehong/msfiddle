@@ -1,6 +1,7 @@
 # msfiddle
 
-[![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa] (free for academic use) 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![PyPI](https://img.shields.io/pypi/v/msfiddle)](https://pypi.org/project/msfiddle/)
 
 Source code for the FIDDLE PyPI package featuring:
 
@@ -8,7 +9,7 @@ Source code for the FIDDLE PyPI package featuring:
 * Formula refinement with confidence score estimation
 * Seamless integration with BUDDY and SIRIUS tools
 
-Preprint: https://doi.org/10.1101/2024.11.25.625316
+Paper: https://www.nature.com/articles/s41467-025-66060-9
 
 For the complete experimenal codes, please visit the GitHub repository: https://github.com/JosieHong/FIDDLE
 
@@ -104,23 +105,18 @@ msfiddle --test_data /path/to/data.mgf \
 ## Citation
 
 ```
-@article{hong2024fiddle,
+@article{hong2025fiddle,
   title={FIDDLE: a deep learning method for chemical formulas prediction from tandem mass spectra},
   author={Hong, Yuhui and Li, Sujun and Ye, Yuzhen and Tang, Haixu},
-  journal={bioRxiv},
-  pages={2024--11},
-  year={2024},
-  publisher={Cold Spring Harbor Laboratory}
+  journal={Nature Communications},
+  volume={16},
+  number={1},
+  pages={11102},
+  year={2025},
+  publisher={Nature Publishing Group UK London}
 }
 ```
 
 ## License
 
-This work is licensed under a
-[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License][cc-by-nc-sa].
-
-[![CC BY-NC-SA 4.0][cc-by-nc-sa-image]][cc-by-nc-sa]
-
-[cc-by-nc-sa]: http://creativecommons.org/licenses/by-nc-sa/4.0/
-[cc-by-nc-sa-image]: https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png
-[cc-by-nc-sa-shield]: https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg
+This project is licensed under the [Apache License 2.0](LICENSE).
