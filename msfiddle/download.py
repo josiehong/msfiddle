@@ -1,7 +1,3 @@
-"""
-Module for downloading and locating pre-trained models for msfiddle.
-"""
-
 import os
 import sys
 import shutil
@@ -12,7 +8,10 @@ import argparse
 from pathlib import Path
 from tqdm import tqdm
 
-from importlib.metadata import version as _get_version, PackageNotFoundError as _PackageNotFoundError
+from importlib.metadata import (
+    version as _get_version,
+    PackageNotFoundError as _PackageNotFoundError,
+)
 
 try:
     FIDDLE_RELEASE = f"v{_get_version('msfiddle')}"

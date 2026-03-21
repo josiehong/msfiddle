@@ -2,6 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![PyPI](https://img.shields.io/pypi/v/msfiddle)](https://pypi.org/project/msfiddle/)
+[![Documentation](https://readthedocs.org/projects/msfiddle/badge/?version=latest)](https://msfiddle.readthedocs.io)
 
 Source code for the FIDDLE PyPI package featuring:
 
@@ -11,7 +12,9 @@ Source code for the FIDDLE PyPI package featuring:
 
 Paper: https://www.nature.com/articles/s41467-025-66060-9
 
-For the complete experimenal codes, please visit the GitHub repository: https://github.com/JosieHong/FIDDLE
+Documentation: https://msfiddle.readthedocs.io
+
+For the complete experimental codes, please visit the GitHub repository: https://github.com/JosieHong/FIDDLE
 
 ## Installation
 
