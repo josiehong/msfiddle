@@ -37,9 +37,9 @@ class TestPrecursorRoundtrip:
         """mass_calculator should be the inverse of precursor_mz_calculator."""
         mz = precursor_mz_calculator(precursor_type, MASS)
         recovered_mass = mass_calculator(precursor_type, mz)
-        assert abs(recovered_mass - MASS) < 1e-6, (
-            f"{precursor_type}: expected {MASS}, got {recovered_mass}"
-        )
+        assert (
+            abs(recovered_mass - MASS) < 1e-6
+        ), f"{precursor_type}: expected {MASS}, got {recovered_mass}"
 
     def test_unsupported_type_raises(self):
         with pytest.raises(ValueError):

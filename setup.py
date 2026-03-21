@@ -19,7 +19,7 @@ setup(
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering :: Chemistry",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
-        "Topic :: Scientific/Engineering :: Bio-Informatics", 
+        "Topic :: Scientific/Engineering :: Bio-Informatics",
         "Topic :: Scientific/Engineering :: Medical Science Apps.",
     ],
     python_requires=">=3.6",
@@ -32,9 +32,9 @@ setup(
         "scipy>=1.8.0",
         "pyarrow>=10.0.0",
         "rdkit>=2022.03.5",
-        "molmass", 
-        "pyteomics", 
-    ], 
+        "molmass",
+        "pyteomics",
+    ],
     entry_points={
         "console_scripts": [
             "msfiddle=msfiddle.main:main",

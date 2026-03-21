@@ -12,17 +12,20 @@ from .download import check_models_exist, download_models, get_model_path
 
 def __getattr__(name):
     """Lazy-load torch-dependent components only when accessed."""
-    if name in ('MS2FNet_tcn', 'FDRNet'):
+    if name in ("MS2FNet_tcn", "FDRNet"):
         from .model_tcn import MS2FNet_tcn, FDRNet
-        globals()['MS2FNet_tcn'] = MS2FNet_tcn
-        globals()['FDRNet'] = FDRNet
+
+        globals()["MS2FNet_tcn"] = MS2FNet_tcn
+        globals()["FDRNet"] = FDRNet
         return globals()[name]
-    if name in ('test_step', 'rerank_by_fdr'):
+    if name in ("test_step", "rerank_by_fdr"):
         from .main import test_step, rerank_by_fdr
-        globals()['test_step'] = test_step
-        globals()['rerank_by_fdr'] = rerank_by_fdr
+
+        globals()["test_step"] = test_step
+        globals()["rerank_by_fdr"] = rerank_by_fdr
         return globals()[name]
     raise AttributeError(f"module 'msfiddle' has no attribute {name!r}")
+
 
 # Check if models are available and print a message if not
 import os
@@ -30,7 +33,7 @@ import warnings
 import sys
 
 # Skip the warning if we're running the download command
-is_download_command = any('download-models' in arg for arg in sys.argv)
+is_download_command = any("download-models" in arg for arg in sys.argv)
 
 if not is_download_command and not check_models_exist():
     warnings.warn(
@@ -42,15 +45,15 @@ if not is_download_command and not check_models_exist():
     )
 
 __all__ = [
-    'MS2FNet_tcn',
-    'FDRNet',
-    'formula_refinement',
-    'mass_calculator',
-    'vector_to_formula',
-    'formula_to_vector',
-    'test_step',
-    'rerank_by_fdr',
-    'download_models',
-    'check_models_exist',
-    'get_model_path',
+    "MS2FNet_tcn",
+    "FDRNet",
+    "formula_refinement",
+    "mass_calculator",
+    "vector_to_formula",
+    "formula_to_vector",
+    "test_step",
+    "rerank_by_fdr",
+    "download_models",
+    "check_models_exist",
+    "get_model_path",
 ]

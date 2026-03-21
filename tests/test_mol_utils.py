@@ -83,6 +83,7 @@ class TestMonoisotopicMass:
     def test_mol_mode(self):
         from rdkit import Chem
         from rdkit import RDLogger
+
         RDLogger.DisableLog("rdApp.*")
         mol = Chem.AddHs(Chem.MolFromSmiles("C"))  # methane
         mass = monoisotopic_mass_calculator(mol, "mol")
