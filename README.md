@@ -23,20 +23,20 @@ For the complete experimental codes, please visit the GitHub repository: https:/
 pip install msfiddle
 ```
 
-To use `msfiddle`, you need to install `torch>=1.13.0,<2.0.0` separately with the appropriate version for your system. Please refer to the official PyTorch installation guide:
-🔗 [PyTorch Installation Guide](https://pytorch.org/get-started/previous-versions/#v1130). 
+To use `msfiddle`, you need to install `torch` separately with the appropriate version for your system. Please refer to the official PyTorch installation guide:
+🔗 [PyTorch Installation Guide](https://pytorch.org/get-started/locally/).
 
 ## Usage 
 
 **Step 1**: Download pre-trained models
 
 ```bash
-# Download models to the default location (inside the package directory)
+# Download models to the default location (~/.msfiddle/check_point)
 msfiddle-download-models
 
 # Or specify a custom location and models
 msfiddle-download-models --destination /path/to/models \
-                          --models fiddle_tcn_qtof fiddle_fdr_qtof
+                          --models fiddle_tcn_qtof fiddle_rescore_qtof
 ```
 
 **Step 2**: Run predictions
@@ -100,7 +100,7 @@ Advanced usage with custom paths:
 msfiddle --test_data /path/to/data.mgf \
          --config_path /path/to/config.yml \
          --resume_path /path/to/tcn_model.pt \
-         --fdr_resume_path /path/to/fdr_model.pt \
+         --rescore_resume_path /path/to/rescore_model.pt \
          --result_path /path/to/results.csv \
          --device 0
 ```

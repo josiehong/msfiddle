@@ -65,9 +65,6 @@ pip install msfiddle==0.2.0
 ## 7. Update FIDDLE (if model weights changed)
 
 If new checkpoint files (`.pt`) were added:
-1. Create a release in the [FIDDLE repo](https://github.com/JosieHong/FIDDLE) and attach the new `.pt` files
-2. Update the `FIDDLE_RELEASE` constant in `msfiddle/download.py` to point to the new FIDDLE release tag:
+1. Create a release in the [FIDDLE repo](https://github.com/JosieHong/FIDDLE) with a tag matching the `msfiddle` version (e.g. `v2.0.0`) and attach the new `.pt` files
 
-```python
-FIDDLE_RELEASE = "v2.0.0"  # ← update this
-```
+`msfiddle` automatically derives the FIDDLE release tag from the installed package version — no manual update to `download.py` is needed.

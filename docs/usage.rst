@@ -8,8 +8,8 @@ Installation
 
    pip install msfiddle
 
-PyTorch (``>=1.13.0, <2.0.0``) must be installed separately following the
-`official PyTorch installation guide <https://pytorch.org/get-started/previous-versions/#v1130>`_.
+PyTorch must be installed separately following the
+`official PyTorch installation guide <https://pytorch.org/get-started/locally/>`_.
 
 Downloading Pre-trained Models
 -------------------------------
@@ -18,12 +18,12 @@ Model weights must be downloaded before running predictions:
 
 .. code-block:: bash
 
-   # Download to the default location (inside the package directory)
+   # Download to the default location (~/.msfiddle/check_point)
    msfiddle-download-models
 
    # Download specific models to a custom location
    msfiddle-download-models --destination /path/to/models \
-                             --models fiddle_tcn_qtof fiddle_fdr_qtof
+                             --models fiddle_tcn_qtof fiddle_rescore_qtof
 
 To inspect current model paths:
 
@@ -58,7 +58,7 @@ Running Predictions
    msfiddle --test_data /path/to/data.mgf \
             --config_path /path/to/config.yml \
             --resume_path /path/to/tcn_model.pt \
-            --fdr_resume_path /path/to/fdr_model.pt \
+            --rescore_resume_path /path/to/rescore_model.pt \
             --result_path /path/to/results.csv \
             --device 0
 

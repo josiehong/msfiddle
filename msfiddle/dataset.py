@@ -9,14 +9,8 @@ from pyteomics import mgf
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from utils import (
-    ATOMS_INDEX,
-    generate_ms,
-    parse_collision_energy,
-    unify_precursor_type,
-    formula_to_dict,
-    formula_to_vector,
-)
+from .utils.mol_utils import ATOMS_INDEX, formula_to_dict, formula_to_vector
+from .utils.pkl_utils import generate_ms, parse_collision_energy, unify_precursor_type
 
 
 # Used for training and evaluation
@@ -396,10 +390,10 @@ class MGFDataset(Dataset):
         return vector
 
 
-class FDRDataset(Dataset):
+class RescoreDataset(Dataset):
     """Dataset for FDR model training and evaluation.
 
-    Loads a pkl file produced by prepare_fdr.py, where each item contains a
+    Loads a pkl file produced by prepare_rescore.py, where each item contains a
     spectrum array, environment vector, a predicted formula string, and a binary
     label (1 = correct formula, 0 = decoy). The formula string is converted to a
     fixed-length atom-count vector at load time.
