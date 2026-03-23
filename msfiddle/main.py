@@ -178,7 +178,9 @@ def main():
         "--resume_path", type=str, help="Custom path to pretrained TCN model"
     )
     advanced_group.add_argument(
-        "--rescore_resume_path", type=str, help="Custom path to pretrained rescore model"
+        "--rescore_resume_path",
+        type=str,
+        help="Custom path to pretrained rescore model",
     )
 
     args = parser.parse_args()
