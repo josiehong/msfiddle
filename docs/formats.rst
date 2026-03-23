@@ -75,12 +75,12 @@ One row is produced per input spectrum.
    * - ``Running Time``
      - Wall time per spectrum in seconds (prediction + refinement).
    * - ``Refined Formula (k)``
-     - The k-th best refined formula (0-indexed), ranked by FDR score.
+     - The k-th best refined formula (0-indexed), ranked by rescore score.
        ``None`` if fewer than k+1 candidates were found.
    * - ``Refined Mass (k)``
      - Monoisotopic mass of ``Refined Formula (k)``.
-   * - ``FDR (k)``
-     - FDR model confidence score for ``Refined Formula (k)``
+   * - ``Rescore (k)``
+     - Rescore model confidence score for ``Refined Formula (k)``
        (0–1; higher is more confident).
 
 The number of ranked columns is set by ``top_k`` in the configuration file

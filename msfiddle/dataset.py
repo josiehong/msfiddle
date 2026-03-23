@@ -9,14 +9,8 @@ from pyteomics import mgf
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from utils import (
-    ATOMS_INDEX,
-    generate_ms,
-    parse_collision_energy,
-    unify_precursor_type,
-    formula_to_dict,
-    formula_to_vector,
-)
+from .utils.mol_utils import ATOMS_INDEX, formula_to_dict, formula_to_vector
+from .utils.pkl_utils import generate_ms, parse_collision_energy, unify_precursor_type
 
 
 # Used for training and evaluation

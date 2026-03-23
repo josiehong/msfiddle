@@ -3,7 +3,6 @@ import argparse
 from tqdm import tqdm
 import yaml
 import time
-import sys
 
 import numpy as np
 import pandas as pd
@@ -11,11 +10,12 @@ from collections import OrderedDict
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from .dataset import MGFDataset
-from .model_tcn import MS2FNet_tcn, FDRNet
-from .utils.mol_utils import vector_to_formula, formula_to_vector
+from .model_tcn import MS2FNet_tcn, FormulaEncoder, RescoreHead
+from .utils.mol_utils import vector_to_formula, formula_to_vector, formula_to_dict
 from .utils.msms_utils import mass_calculator
 from .utils.refine_utils import formula_refinement
 from .download import get_checkpoint_dir, check_models_exist, download_models
@@ -69,46 +69,54 @@ def test_step(model, loader, device):
     )
 
 
-def rerank_by_fdr(fdr_model, spec, env, refined_results, device, K):
-    fdr_model.eval()
+def rescore_candidates(
+    spec_encoder, formula_encoder, rescore_head, spec, env, refined_results, device, K
+):
+    """Rescore candidates using the Siamese interaction head.
 
-    refine_f = [f for f in refined_results["formula"] if f != None]
-    refine_m = [m for m in refined_results["mass"] if m != None]
-    if len(refine_f) == 0:
-        refined_results["fdr"] = [0.0] * K
+    Score = sigmoid(RescoreHead(z_spec ⊙ FormulaEncoder(formula_vec))).
+    Candidates are ranked by rescore score directly.
+    """
+    formula_encoder.eval()
+    rescore_head.eval()
+    spec_encoder.eval()
+
+    refine_f = [f for f in refined_results["formula"] if f is not None]
+    refine_m = [m for m in refined_results["mass"] if m is not None]
+    if not refine_f:
+        refined_results["rescore"] = [0.0] * K
         return refined_results
 
-    # convert refine_f (formula strings) to f (formula vectors)
-    f = [formula_to_vector(f_str) for f_str in refine_f]
-    f = torch.from_numpy(np.array(f))
-
-    spec = spec.to(device, dtype=torch.float32).repeat(f.size(0), 1)
-    env = env.to(device, dtype=torch.float32).repeat(f.size(0), 1)
-    f = f.to(device, dtype=torch.float32)
+    f_vecs = torch.from_numpy(np.array([formula_to_vector(s) for s in refine_f]))
+    spec_t = spec.to(device, dtype=torch.float32)
+    env_t = env.to(device, dtype=torch.float32).clone()
+    env_t[:, 0] = 0.0  # zero out precursor_mz to match training
 
     with torch.no_grad():
-        fdr = fdr_model(spec, env, f)
-        fdr = torch.sigmoid(fdr).detach().cpu().numpy()
+        z_spec, _, _, _, _ = spec_encoder(spec_t, env_t)
+        z_spec = F.normalize(z_spec, dim=1)  # (1, D)
+        z_spec_rep = z_spec.expand(len(refine_f), -1)  # (K, D)
 
-    # Create a list of tuples with (fdr_value, refine_f_value, mass_value) pairs
-    combined_list = list(zip(fdr, refine_f, refine_m))
-    # Sort the combined list based on the fdr_value
-    sorted_combined_list = sorted(combined_list, key=lambda x: x[0], reverse=True)
-    # Unpack the sorted lists
-    sorted_fdr, sorted_refine_f, sorted_mass = zip(*sorted_combined_list)
-    sorted_fdr, sorted_refine_f, sorted_mass = (
-        list(sorted_fdr),
-        list(sorted_refine_f),
-        list(sorted_mass),
+        f_t = f_vecs.to(device, dtype=torch.float32)
+        z_form = formula_encoder(f_t)  # (K, D)
+
+        interaction = z_spec_rep * z_form  # (K, D)
+        logits = rescore_head(interaction)  # (K,)
+        rescore_scores = torch.sigmoid(logits).cpu().numpy()
+
+    ranked = sorted(
+        zip(rescore_scores, refine_f, refine_m),
+        key=lambda x: x[0],
+        reverse=True,
     )
+    sorted_rescore, sorted_f, sorted_m = map(list, zip(*ranked))
 
-    # Pad sorted_refine_f and sorted_fdr with None if necessary
-    if len(sorted_refine_f) < K:
-        sorted_refine_f += [None] * (K - len(sorted_refine_f))
-        sorted_fdr += [0.0] * (K - len(sorted_fdr))
-        sorted_mass += [None] * (K - len(sorted_mass))
+    while len(sorted_f) < K:
+        sorted_f.append(None)
+        sorted_rescore.append(0.0)
+        sorted_m.append(None)
 
-    return {"formula": sorted_refine_f, "mass": sorted_mass, "fdr": sorted_fdr}
+    return {"formula": sorted_f, "mass": sorted_m, "rescore": sorted_rescore}
 
 
 def init_random_seed(seed):
@@ -170,7 +178,7 @@ def main():
         "--resume_path", type=str, help="Custom path to pretrained TCN model"
     )
     advanced_group.add_argument(
-        "--fdr_resume_path", type=str, help="Custom path to pretrained FDR model"
+        "--rescore_resume_path", type=str, help="Custom path to pretrained rescore model"
     )
 
     args = parser.parse_args()
@@ -217,13 +225,13 @@ def main():
         resume_path = os.path.join(checkpoint_dir, f"fiddle_tcn_{instrument_suffix}.pt")
     print(f"Using TCN model: {resume_path}")
 
-    if args.fdr_resume_path:
-        fdr_resume_path = args.fdr_resume_path
+    if args.rescore_resume_path:
+        rescore_resume_path = args.rescore_resume_path
     else:
-        fdr_resume_path = os.path.join(
-            checkpoint_dir, f"fiddle_fdr_{instrument_suffix}.pt"
+        rescore_resume_path = os.path.join(
+            checkpoint_dir, f"fiddle_rescore_{instrument_suffix}.pt"
         )
-    print(f"Using FDR model: {fdr_resume_path}")
+    print(f"Using rescore model: {rescore_resume_path}")
 
     # Load config
     with open(config_path, "r") as f:
@@ -269,29 +277,20 @@ def main():
     else:
         model.load_state_dict(state_dict)
 
-    # 2.2 FDR
-    fdr_model = FDRNet(config["model"]).to(device_1st)
-    num_params = sum(p.numel() for p in fdr_model.parameters())
-    print(f"# FDRNet Params: {num_params}")
-    if len(args.device) > 1:  # Wrap the model with nn.DataParallel
-        fdr_model = nn.DataParallel(fdr_model, device_ids=args.device)
+    # 2.2 Rescore model (FormulaEncoder + RescoreHead)
+    formula_encoder = FormulaEncoder(config["model"]).to(device_1st)
+    rescore_head = RescoreHead(config["model"]).to(device_1st)
+    n_params = sum(p.numel() for p in formula_encoder.parameters()) + sum(
+        p.numel() for p in rescore_head.parameters()
+    )
+    print(f"# Rescore Params: {n_params}")
 
-    print("Loading the FDR prediction model...")
-    state_dict = torch.load(
-        fdr_resume_path, map_location=device_1st, weights_only=False
-    )["model_state_dict"]
-    is_multi_gpu = any(key.startswith("module.") for key in state_dict.keys())
-    if is_multi_gpu and len(args.device) == 1:  # Convert the fdr_model to single GPU
-        new_state_dict = OrderedDict()
-        for key, value in state_dict.items():
-            if key.startswith("module."):
-                new_key = key[7:]  # Remove the 'module.' prefix
-                new_state_dict[new_key] = value
-            else:
-                new_state_dict[key] = value
-        fdr_model.load_state_dict(new_state_dict)
-    else:
-        fdr_model.load_state_dict(state_dict)
+    print("Loading the rescore model...")
+    ckpt = torch.load(rescore_resume_path, map_location=device_1st, weights_only=False)
+    formula_encoder.load_state_dict(ckpt["formula_encoder_state_dict"])
+    rescore_head.load_state_dict(ckpt["rescore_head_state_dict"])
+    formula_encoder.eval()
+    rescore_head.eval()
 
     # 3. Formula Prediction
     (
@@ -333,8 +332,9 @@ def main():
         "Refined Mass ({})".format(str(k)): []
         for k in range(config["post_processing"]["top_k"])
     }
-    fdr_refined = {
-        "FDR ({})".format(str(k)): [] for k in range(config["post_processing"]["top_k"])
+    rescore_refined = {
+        "Rescore ({})".format(str(k)): []
+        for k in range(config["post_processing"]["top_k"])
     }
     running_time = []
     exp_mass = []
@@ -425,7 +425,16 @@ def main():
             ]
             f0_list.extend(sirius_f)
 
-        f0_list = list(set(f0_list))  # deduplicates
+        f0_list = list(set(f0_list))
+        refine_atom_type = list(config["post_processing"]["refine_atom_type"])
+        refine_atom_num = list(config["post_processing"]["refine_atom_num"])
+        for f0 in f0_list:
+            for atom, cnt in formula_to_dict(f0).items():
+                if atom == "H" or atom in refine_atom_type:
+                    continue
+                refine_atom_type.append(atom)
+                refine_atom_num.append(max(1, int(cnt)))
+
         start_time = time.time()
         refined_results = formula_refinement(
             f0_list,
@@ -435,13 +444,14 @@ def main():
             config["post_processing"]["top_k"],
             config["post_processing"]["maxium_miss_atom_num"],
             config["post_processing"]["time_out"],
-            config["post_processing"]["refine_atom_type"],
-            config["post_processing"]["refine_atom_num"],
+            refine_atom_type,
+            refine_atom_num,
         )
 
-        # Rerank the results by predicted FDR
-        refined_results = rerank_by_fdr(
-            fdr_model,
+        refined_results = rescore_candidates(
+            model,
+            formula_encoder,
+            rescore_head,
             spec,
             env,
             refined_results,
@@ -449,16 +459,16 @@ def main():
             config["post_processing"]["top_k"],
         )
 
-        for i, (refined_f, refined_m, refined_fdr) in enumerate(
+        for i, (refined_f, refined_m, refined_s) in enumerate(
             zip(
                 refined_results["formula"],
                 refined_results["mass"],
-                refined_results["fdr"],
+                refined_results["rescore"],
             )
         ):
             formula_redined[f"Refined Formula ({i})"].append(refined_f)
             mass_redined[f"Refined Mass ({i})"].append(refined_m)
-            fdr_refined[f"FDR ({i})"].append(refined_fdr)
+            rescore_refined[f"Rescore ({i})"].append(refined_s)
         refinement_time = time.time() - start_time
         running_time.append(prediction_time + refinement_time)
 
@@ -475,7 +485,7 @@ def main():
         "Running Time": running_time,
     }
     res_df = pd.DataFrame(
-        {**out_dict, **formula_redined, **mass_redined, **fdr_refined}
+        {**out_dict, **formula_redined, **mass_redined, **rescore_refined}
     )
     res_df.to_csv(args.result_path, index=False)
     print(f"Done! Results saved to {args.result_path}")

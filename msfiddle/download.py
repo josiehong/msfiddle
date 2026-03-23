@@ -20,9 +20,9 @@ except _PackageNotFoundError:
 
 MODEL_URLS = {
     "fiddle_tcn_qtof": f"https://github.com/JosieHong/FIDDLE/releases/download/{FIDDLE_RELEASE}/fiddle_tcn_qtof.zip",
-    "fiddle_fdr_qtof": f"https://github.com/JosieHong/FIDDLE/releases/download/{FIDDLE_RELEASE}/fiddle_fdr_qtof.zip",
+    "fiddle_rescore_qtof": f"https://github.com/JosieHong/FIDDLE/releases/download/{FIDDLE_RELEASE}/fiddle_rescore_qtof.zip",
     "fiddle_tcn_orbitrap": f"https://github.com/JosieHong/FIDDLE/releases/download/{FIDDLE_RELEASE}/fiddle_tcn_orbitrap.zip",
-    "fiddle_fdr_orbitrap": f"https://github.com/JosieHong/FIDDLE/releases/download/{FIDDLE_RELEASE}/fiddle_fdr_orbitrap.zip",
+    "fiddle_rescore_orbitrap": f"https://github.com/JosieHong/FIDDLE/releases/download/{FIDDLE_RELEASE}/fiddle_rescore_orbitrap.zip",
 }
 
 
@@ -43,17 +43,13 @@ def download_url(url, output_path):
         urllib.request.urlretrieve(url, filename=output_path, reporthook=t.update_to)
 
 
-def get_package_dir():
-    """Get the directory where the package is installed."""
-    import msfiddle
-
-    return os.path.dirname(os.path.abspath(msfiddle.__file__))
-
-
 def get_checkpoint_dir():
-    """Get the directory where model checkpoints are stored."""
-    package_dir = get_package_dir()
-    return os.path.join(package_dir, "check_point")
+    """Get the directory where model checkpoints are stored.
+
+    Returns ``~/.msfiddle/check_point``, a user-level directory that is
+    consistent regardless of working directory or install method.
+    """
+    return os.path.join(os.path.expanduser("~"), ".msfiddle", "check_point")
 
 
 def download_models(destination=None, models=None):
