@@ -3,7 +3,6 @@ import pytest
 import msfiddle.api as api
 from msfiddle.api import MsFiddlePredictor, _ModelPrediction
 
-
 VALID_MZ = [60.0, 85.0, 100.0, 125.0, 150.0]
 VALID_INTENSITY = [10.0, 50.0, 20.0, 35.0, 15.0]
 VALID_PRECURSOR_MZ = 180.063
@@ -131,7 +130,9 @@ def test_predict_batch_preserves_order_ids_and_candidate_shape(monkeypatch, tmp_
         )
 
     monkeypatch.setattr(MsFiddlePredictor, "_predict_encoded", fake_predict_encoded)
-    monkeypatch.setattr(MsFiddlePredictor, "_refine_and_rescore", fake_refine_and_rescore)
+    monkeypatch.setattr(
+        MsFiddlePredictor, "_refine_and_rescore", fake_refine_and_rescore
+    )
 
     result = predictor.predict_batch(
         [

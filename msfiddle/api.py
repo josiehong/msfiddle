@@ -20,11 +20,15 @@ from pyteomics import mgf
 
 from .download import download_models as download_pretrained_models
 from .download import get_checkpoint_dir
-from .utils.mol_utils import ATOMS_INDEX, formula_to_dict, formula_to_vector, vector_to_formula
+from .utils.mol_utils import (
+    ATOMS_INDEX,
+    formula_to_dict,
+    formula_to_vector,
+    vector_to_formula,
+)
 from .utils.msms_utils import mass_calculator
 from .utils.pkl_utils import generate_ms, parse_collision_energy, unify_precursor_type
 from .utils.refine_utils import formula_refinement
-
 
 _INSTRUMENT_TYPES = {"orbitrap", "qtof"}
 _NEUTRAL_FORMULAS = ("CH4O2", "CH2O2", "H2O", "NH3", "CO2")
@@ -80,14 +84,18 @@ class MsFiddlePredictor:
         self.verbose = verbose
 
         package_dir = Path(__file__).resolve().parent
-        self.config_path = Path(config_path) if config_path else (
-            package_dir / "config" / f"fiddle_tcn_{self.instrument_type}.yml"
+        self.config_path = (
+            Path(config_path)
+            if config_path
+            else (package_dir / "config" / f"fiddle_tcn_{self.instrument_type}.yml")
         )
         self.config = _load_config(self.config_path)
 
         checkpoint_dir = Path(get_checkpoint_dir())
-        self.resume_path = Path(resume_path) if resume_path else (
-            checkpoint_dir / f"fiddle_tcn_{self.instrument_type}.pt"
+        self.resume_path = (
+            Path(resume_path)
+            if resume_path
+            else (checkpoint_dir / f"fiddle_tcn_{self.instrument_type}.pt")
         )
         self.rescore_resume_path = (
             Path(rescore_resume_path)
@@ -147,7 +155,9 @@ class MsFiddlePredictor:
         """
 
         top_k = _validate_top_k(top_k)
-        batch_size = self.batch_size if batch_size is None else _validate_batch_size(batch_size)
+        batch_size = (
+            self.batch_size if batch_size is None else _validate_batch_size(batch_size)
+        )
         encoded = [
             self._encode_spectrum_record(spectrum, idx)
             for idx, spectrum in enumerate(_validate_spectra_collection(spectra))
@@ -196,7 +206,9 @@ class MsFiddlePredictor:
             if top_k is not None
             else int(self.config["post_processing"]["top_k"])
         )
-        batch_size = self.batch_size if batch_size is None else _validate_batch_size(batch_size)
+        batch_size = (
+            self.batch_size if batch_size is None else _validate_batch_size(batch_size)
+        )
         encoded = self._load_mgf_spectra(test_data_path)
         predictions = self._predict_encoded(encoded, batch_size=batch_size)
 
@@ -247,7 +259,9 @@ class MsFiddlePredictor:
             "Pred H/C Num": [prediction.pred_hc_count for prediction in predictions],
             "Running Time": running_time,
         }
-        return pd.DataFrame({**base_columns, **refined_formula, **refined_mass, **refined_rescore})
+        return pd.DataFrame(
+            {**base_columns, **refined_formula, **refined_mass, **refined_rescore}
+        )
 
     def _encode_spectrum_record(
         self,
@@ -333,7 +347,9 @@ class MsFiddlePredictor:
             neutral_add=np.array(neutral_add, dtype=np.float32),
         )
 
-    def _load_mgf_spectra(self, test_data_path: str | os.PathLike[str]) -> list[_EncodedSpectrum]:
+    def _load_mgf_spectra(
+        self, test_data_path: str | os.PathLike[str]
+    ) -> list[_EncodedSpectrum]:
         path = Path(test_data_path)
         if not path.exists():
             raise FileNotFoundError(f"MGF file not found: {path}")
@@ -353,13 +369,20 @@ class MsFiddlePredictor:
             params = spectrum.get("params", {})
             missing = [
                 key
-                for key in ("title", precursor_mz_key, "precursor_type", "collision_energy")
+                for key in (
+                    "title",
+                    precursor_mz_key,
+                    "precursor_type",
+                    "collision_energy",
+                )
                 if key not in params
             ]
             if missing:
                 invalid_count += 1
                 if self.verbose:
-                    print("MGFError: lacking necessary keys in mgf file, skip this spectrum")
+                    print(
+                        "MGFError: lacking necessary keys in mgf file, skip this spectrum"
+                    )
                     print(
                         "expected keys in mgf: "
                         f"('title', '{precursor_mz_key}', 'precursor_type', 'collision_energy')"
@@ -407,7 +430,9 @@ class MsFiddlePredictor:
         if self.verbose:
             from tqdm import tqdm
 
-            batch_starts = tqdm(batch_starts, total=math.ceil(len(encoded) / batch_size), desc="Eval")
+            batch_starts = tqdm(
+                batch_starts, total=math.ceil(len(encoded) / batch_size), desc="Eval"
+            )
 
         assert self.model is not None
         self.model.eval()
@@ -421,12 +446,16 @@ class MsFiddlePredictor:
                 self.device,
                 dtype=torch.float32,
             )
-            neutral_t = torch.from_numpy(np.stack([item.neutral_add for item in batch])).to(
+            neutral_t = torch.from_numpy(
+                np.stack([item.neutral_add for item in batch])
+            ).to(
                 self.device,
                 dtype=torch.float32,
             )
             with torch.no_grad():
-                _, pred_f, pred_mass, pred_atomnum, pred_hcnum = self.model(spec_t, env_t)
+                _, pred_f, pred_mass, pred_atomnum, pred_hcnum = self.model(
+                    spec_t, env_t
+                )
             pred_f = pred_f - neutral_t
             formula_vectors.append(pred_f.detach().cpu().numpy())
             mass_predictions.append(pred_mass.detach().cpu().numpy())
@@ -628,19 +657,31 @@ class MsFiddlePredictor:
         assert self.formula_encoder is not None
         assert self.rescore_head is not None
 
-        refine_f = [formula for formula in refined_results["formula"] if formula is not None]
+        refine_f = [
+            formula for formula in refined_results["formula"] if formula is not None
+        ]
         refine_m = [
             mass
-            for formula, mass in zip(refined_results["formula"], refined_results["mass"])
+            for formula, mass in zip(
+                refined_results["formula"], refined_results["mass"]
+            )
             if formula is not None
         ]
         if not refine_f:
             refined_results["rescore"] = [0.0] * top_k
             return refined_results
 
-        f_vecs = torch.from_numpy(np.array([formula_to_vector(formula) for formula in refine_f]))
-        spec_t = torch.from_numpy(spectrum.spec[None, :]).to(self.device, dtype=torch.float32)
-        env_t = torch.from_numpy(spectrum.env[None, :]).to(self.device, dtype=torch.float32).clone()
+        f_vecs = torch.from_numpy(
+            np.array([formula_to_vector(formula) for formula in refine_f])
+        )
+        spec_t = torch.from_numpy(spectrum.spec[None, :]).to(
+            self.device, dtype=torch.float32
+        )
+        env_t = (
+            torch.from_numpy(spectrum.env[None, :])
+            .to(self.device, dtype=torch.float32)
+            .clone()
+        )
         env_t[:, 0] = 0.0
 
         self.model.eval()
@@ -655,7 +696,9 @@ class MsFiddlePredictor:
             logits = self.rescore_head(z_spec_rep * z_form)
             scores = torch.sigmoid(logits).detach().cpu().numpy()
 
-        ranked = sorted(zip(scores, refine_f, refine_m), key=lambda item: item[0], reverse=True)
+        ranked = sorted(
+            zip(scores, refine_f, refine_m), key=lambda item: item[0], reverse=True
+        )
         sorted_rescore, sorted_f, sorted_m = map(list, zip(*ranked))
         while len(sorted_f) < top_k:
             sorted_f.append(None)

@@ -37,9 +37,7 @@ def _checkpoint_error_message(missing_paths):
 
 def validate_checkpoint_paths(resume_path, rescore_resume_path):
     missing_paths = [
-        path
-        for path in (resume_path, rescore_resume_path)
-        if not os.path.exists(path)
+        path for path in (resume_path, rescore_resume_path) if not os.path.exists(path)
     ]
     if missing_paths:
         raise FileNotFoundError(_checkpoint_error_message(missing_paths))
