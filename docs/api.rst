@@ -1,6 +1,18 @@
 API Reference
 =============
 
+Prediction API
+--------------
+
+.. autoclass:: msfiddle.api.MsFiddlePredictor
+   :members:
+
+.. autofunction:: msfiddle.api.predict_from_spectrum
+
+.. autofunction:: msfiddle.api.predict_batch_from_spectra
+
+.. autofunction:: msfiddle.api.predict_from_mgf
+
 Molecular Utilities
 -------------------
 

@@ -21,6 +21,9 @@ For the complete experimental codes, please visit the GitHub repository: https:/
 ```bash
 # Install msfiddle (without PyTorch)
 pip install msfiddle
+
+# Or install the optional inference extra
+pip install "msfiddle[inference]"
 ```
 
 To use `msfiddle`, you need to install `torch` separately with the appropriate version for your system. Please refer to the official PyTorch installation guide:
@@ -59,6 +62,50 @@ msfiddle --test_data /path/to/data.mgf \
 ```
 
 The `--instrument_type` parameter can be either `orbitrap` (default) or `qtof`. 
+
+### Python API
+
+For one-off prediction from native MS/MS arrays:
+
+```python
+from msfiddle import predict_from_spectrum
+
+candidates = predict_from_spectrum(
+    mz_array=[60.0, 85.0, 100.0, 125.0, 150.0],
+    intensity_array=[10.0, 50.0, 20.0, 35.0, 15.0],
+    precursor_mz=180.063,
+    adduct="[M+H]+",
+    top_k=5,
+    instrument_type="orbitrap",
+    collision_energy="Unknown",
+    device="cpu",
+)
+```
+
+For repeated or batched predictions, reuse a predictor so checkpoints are loaded
+once:
+
+```python
+from msfiddle import MsFiddlePredictor
+
+predictor = MsFiddlePredictor(instrument_type="orbitrap", device="cpu")
+
+results = predictor.predict_batch(
+    [
+        {
+            "id": "sample-1",
+            "mz_array": [60.0, 85.0, 100.0, 125.0, 150.0],
+            "intensity_array": [10.0, 50.0, 20.0, 35.0, 15.0],
+            "precursor_mz": 180.063,
+            "adduct": "[M+H]+",
+            "collision_energy": "Unknown",
+        }
+    ]
+)
+```
+
+Python APIs do not download model checkpoints unless `download_models=True` is
+passed. The CLI keeps its existing automatic download behavior.
 
 Below is an example of input MS/MS data formatted in `.mgf`. The fields `TITLE`, `PRECURSOR_MZ`, `PRECURSOR_TYPE`, and `COLLISION_ENERGY` are required for msfiddle processing: 
 

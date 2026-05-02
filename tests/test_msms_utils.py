@@ -28,6 +28,7 @@ PRECURSOR_TYPES = [
     "[M-H-CO2]-",
     "[M-CHO2]-",
     "[M-H-H2O]-",
+    "[M-H2O-H]-",
 ]
 
 
