@@ -138,5 +138,6 @@ MGF files can also be used from Python:
    )
 
 The Python APIs are quiet by default and do not download checkpoints unless
-``download_models=True`` is passed. The CLI keeps its existing automatic model
-download behavior.
+``download_models=True`` is passed. The CLI also requires checkpoints to be
+downloaded before prediction and prints a checkpoint error with the
+``msfiddle-download-models`` command if they are missing.

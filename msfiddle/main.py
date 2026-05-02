@@ -1,5 +1,6 @@
 import os
 import argparse
+import sys
 from tqdm import tqdm
 import yaml
 import time
@@ -18,8 +19,30 @@ from .model_tcn import MS2FNet_tcn, FormulaEncoder, RescoreHead
 from .utils.mol_utils import vector_to_formula, formula_to_vector, formula_to_dict
 from .utils.msms_utils import mass_calculator
 from .utils.refine_utils import formula_refinement
-from .download import get_checkpoint_dir, check_models_exist, download_models
+from .download import get_checkpoint_dir
 from .api import MsFiddlePredictor
+
+
+def _checkpoint_error_message(missing_paths):
+    missing = "\n".join(f"  - {path}" for path in missing_paths)
+    return (
+        "Required msfiddle checkpoint file(s) were not found:\n"
+        f"{missing}\n\n"
+        "Download the pre-trained checkpoints before running predictions:\n"
+        "  msfiddle-download-models\n\n"
+        "To inspect checkpoint locations, run:\n"
+        "  msfiddle-checkpoint-paths"
+    )
+
+
+def validate_checkpoint_paths(resume_path, rescore_resume_path):
+    missing_paths = [
+        path
+        for path in (resume_path, rescore_resume_path)
+        if not os.path.exists(path)
+    ]
+    if missing_paths:
+        raise FileNotFoundError(_checkpoint_error_message(missing_paths))
 
 
 def test_step(model, loader, device):
@@ -192,12 +215,6 @@ def main():
     # Get package directory
     package_dir = os.path.dirname(os.path.abspath(__file__))
 
-    # Make sure models are downloaded
-    if not check_models_exist():
-        print("Pre-trained models not found. Downloading now...")
-        download_models()
-        print("Models downloaded successfully.")
-
     # Set default paths based on mode and instrument type
     if args.demo:
         test_data_path = os.path.join(package_dir, "demo", "input_msms.mgf")
@@ -234,6 +251,12 @@ def main():
             checkpoint_dir, f"fiddle_rescore_{instrument_suffix}.pt"
         )
     print(f"Using rescore model: {rescore_resume_path}")
+
+    try:
+        validate_checkpoint_paths(resume_path, rescore_resume_path)
+    except FileNotFoundError as exc:
+        sys.stdout.flush()
+        parser.exit(status=1, message=f"{exc}\n")
 
     predictor = MsFiddlePredictor(
         instrument_type=args.instrument_type,
