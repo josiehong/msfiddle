@@ -67,4 +67,4 @@ pip install msfiddle==0.2.0
 If new checkpoint files (`.pt`) were added:
 1. Create a release in the [FIDDLE repo](https://github.com/JosieHong/FIDDLE) with a tag matching the `msfiddle` version (e.g. `v2.0.0`) and attach the new `.pt` files
 
-`msfiddle` automatically derives the FIDDLE release tag from the installed package version unless `download.py` explicitly maps a packaging-only release to an existing checkpoint release. For example, `msfiddle` 2.0.1 reuses the FIDDLE `v2.0.0` checkpoint assets.
+`msfiddle` derives the FIDDLE checkpoint release from the installed package major version. For example, all `msfiddle` 2.x.x releases download checkpoint assets from the FIDDLE `v2.0.0` release.

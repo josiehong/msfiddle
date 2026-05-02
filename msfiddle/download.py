@@ -5,6 +5,7 @@ import tempfile
 import urllib.request
 import zipfile
 import argparse
+import re
 from pathlib import Path
 from tqdm import tqdm
 
@@ -14,19 +15,12 @@ from importlib.metadata import (
 )
 
 
-CHECKPOINT_RELEASE_OVERRIDES = {
-    # msfiddle 2.0.1 changes Python/API packaging only. It reuses the 2.0.0
-    # model checkpoints so users do not need a duplicate FIDDLE release.
-    "2.0.1": "v2.0.0",
-}
-
-
 def checkpoint_release_for_package_version(package_version):
-    """Return the FIDDLE release tag that contains checkpoint assets."""
-    return CHECKPOINT_RELEASE_OVERRIDES.get(
-        package_version,
-        f"v{package_version}",
-    )
+    """Return the major-version FIDDLE release tag that contains checkpoints."""
+    match = re.match(r"^(\d+)", str(package_version))
+    if match is None:
+        return f"v{package_version}"
+    return f"v{match.group(1)}.0.0"
 
 
 try:
