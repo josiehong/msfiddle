@@ -1,5 +1,6 @@
 import os
 import argparse
+import sys
 from tqdm import tqdm
 import yaml
 import time
@@ -18,7 +19,30 @@ from .model_tcn import MS2FNet_tcn, FormulaEncoder, RescoreHead
 from .utils.mol_utils import vector_to_formula, formula_to_vector, formula_to_dict
 from .utils.msms_utils import mass_calculator
 from .utils.refine_utils import formula_refinement
-from .download import get_checkpoint_dir, check_models_exist, download_models
+from .download import get_checkpoint_dir
+from .api import MsFiddlePredictor
+
+
+def _checkpoint_error_message(missing_paths):
+    missing = "\n".join(f"  - {path}" for path in missing_paths)
+    return (
+        "Required msfiddle checkpoint file(s) were not found:\n"
+        f"{missing}\n\n"
+        "Download the pre-trained checkpoints before running predictions:\n"
+        "  msfiddle-download-models\n\n"
+        "To inspect checkpoint locations, run:\n"
+        "  msfiddle-checkpoint-paths"
+    )
+
+
+def validate_checkpoint_paths(resume_path, rescore_resume_path):
+    missing_paths = [
+        path
+        for path in (resume_path, rescore_resume_path)
+        if not os.path.exists(path)
+    ]
+    if missing_paths:
+        raise FileNotFoundError(_checkpoint_error_message(missing_paths))
 
 
 def test_step(model, loader, device):
@@ -187,16 +211,9 @@ def main():
 
     # Initialize random seed
     init_random_seed(args.seed)
-    start_time = time.time()
 
     # Get package directory
     package_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # Make sure models are downloaded
-    if not check_models_exist():
-        print("Pre-trained models not found. Downloading now...")
-        download_models()
-        print("Models downloaded successfully.")
 
     # Set default paths based on mode and instrument type
     if args.demo:
@@ -235,260 +252,29 @@ def main():
         )
     print(f"Using rescore model: {rescore_resume_path}")
 
-    # Load config
-    with open(config_path, "r") as f:
-        config = yaml.load(f, Loader=yaml.FullLoader)
-    print("Loaded model & training configuration from {}".format(config_path))
+    try:
+        validate_checkpoint_paths(resume_path, rescore_resume_path)
+    except FileNotFoundError as exc:
+        sys.stdout.flush()
+        parser.exit(status=1, message=f"{exc}\n")
 
-    # Set device
-    device_1st = (
-        torch.device("cuda:" + str(args.device[0]))
-        if torch.cuda.is_available() and not args.no_cuda
-        else torch.device("cpu")
+    predictor = MsFiddlePredictor(
+        instrument_type=args.instrument_type,
+        device=args.device,
+        no_cuda=args.no_cuda,
+        config_path=config_path,
+        resume_path=resume_path,
+        rescore_resume_path=rescore_resume_path,
+        download_models=False,
+        verbose=True,
     )
-    print(f"Device(s): {args.device}")
-
-    # 1. Data
-    valid_set = MGFDataset(test_data_path, config["encoding"])
-    valid_loader = DataLoader(
-        valid_set, batch_size=1, shuffle=False, num_workers=0, drop_last=True
+    res_df = predictor.predict_mgf(
+        test_data_path,
+        buddy_path=args.buddy_path,
+        sirius_path=args.sirius_path,
     )
 
-    # 2. Model
-    # 2.1 MS2F
-    model = MS2FNet_tcn(config["model"]).to(device_1st)
-    num_params = sum(p.numel() for p in model.parameters())
-    print(f"# MS2FNet_tcn Params: {num_params}")
-    if len(args.device) > 1:  # Wrap the model with nn.DataParallel
-        model = nn.DataParallel(model, device_ids=args.device)
-
-    print("Loading the formula prediction model...")
-    state_dict = torch.load(resume_path, map_location=device_1st, weights_only=False)[
-        "model_state_dict"
-    ]
-    is_multi_gpu = any(key.startswith("module.") for key in state_dict.keys())
-    if is_multi_gpu and len(args.device) == 1:  # Convert the model to single GPU
-        new_state_dict = OrderedDict()
-        for key, value in state_dict.items():
-            if key.startswith("module."):
-                new_key = key[7:]  # Remove the 'module.' prefix
-                new_state_dict[new_key] = value
-            else:
-                new_state_dict[key] = value
-        model.load_state_dict(new_state_dict)
-    else:
-        model.load_state_dict(state_dict)
-
-    # 2.2 Rescore model (FormulaEncoder + RescoreHead)
-    formula_encoder = FormulaEncoder(config["model"]).to(device_1st)
-    rescore_head = RescoreHead(config["model"]).to(device_1st)
-    n_params = sum(p.numel() for p in formula_encoder.parameters()) + sum(
-        p.numel() for p in rescore_head.parameters()
-    )
-    print(f"# Rescore Params: {n_params}")
-
-    print("Loading the rescore model...")
-    ckpt = torch.load(rescore_resume_path, map_location=device_1st, weights_only=False)
-    formula_encoder.load_state_dict(ckpt["formula_encoder_state_dict"])
-    rescore_head.load_state_dict(ckpt["rescore_head_state_dict"])
-    formula_encoder.eval()
-    rescore_head.eval()
-
-    # 3. Formula Prediction
-    (
-        spec_ids,
-        y_pred,
-        exp_precursor_mz,
-        exp_precursor_type,
-        mass_pred,
-        atomnum_pred,
-        hcnum_pred,
-    ) = test_step(model, valid_loader, device_1st)
-
-    prediction_time = time.time() - start_time
-    prediction_time /= len(valid_set)
-
-    formula_pred = [
-        vector_to_formula(y) for y in y_pred
-    ]  # calculate the formula strings
-    y_pred = [";".join(y) for y in y_pred.numpy().astype("str")]
-
-    spectra = []
-    environments = []
-    for batch in valid_loader:
-        _, _, spec, env, _ = batch
-        spectra.append(spec)
-        environments.append(env)
-
-    # 4. Post-processing
-    if args.buddy_path != "":
-        buddy_df = pd.read_csv(args.buddy_path)
-    if args.sirius_path != "":
-        sirius_df = pd.read_csv(args.sirius_path)
-
-    formula_redined = {
-        "Refined Formula ({})".format(str(k)): []
-        for k in range(config["post_processing"]["top_k"])
-    }
-    mass_redined = {
-        "Refined Mass ({})".format(str(k)): []
-        for k in range(config["post_processing"]["top_k"])
-    }
-    rescore_refined = {
-        "Rescore ({})".format(str(k)): []
-        for k in range(config["post_processing"]["top_k"])
-    }
-    running_time = []
-    exp_mass = []
-    # Please note that here we use the experimental precursor m/z, rather than the theoretic precursor m/z.
-    for idx, pred_f, exp_pre_mz, exp_pre_type, spec, env in tqdm(
-        zip(
-            spec_ids,
-            formula_pred,
-            exp_precursor_mz,
-            exp_precursor_type,
-            spectra,
-            environments,
-        ),
-        total=len(exp_precursor_mz),
-        desc="Post",
-    ):
-        m = mass_calculator(
-            exp_pre_type, exp_pre_mz
-        )  # Use experimental precursor m/z and precursor type to calculate molmass
-        exp_mass.append(m.item())
-
-        f0_list = [pred_f]
-        if args.buddy_path != "" and len(buddy_df.loc[buddy_df["ID"] == idx]) > 0:
-            buddy_f = (
-                buddy_df.loc[buddy_df["ID"] == idx]
-                .iloc[0][
-                    [
-                        "Pred Formula (1)",
-                        "Pred Formula (2)",
-                        "Pred Formula (3)",
-                        "Pred Formula (4)",
-                        "Pred Formula (5)",
-                    ]
-                ]
-                .tolist()
-            )
-            buddy_fdr = (
-                buddy_df.loc[buddy_df["ID"] == idx]
-                .iloc[0][
-                    [
-                        "BUDDY Score (1)",
-                        "BUDDY Score (2)",
-                        "BUDDY Score (3)",
-                        "BUDDY Score (4)",
-                        "BUDDY Score (5)",
-                    ]
-                ]
-                .tolist()
-            )
-            buddy_f = [
-                x
-                for x, fdr in zip(buddy_f, buddy_fdr)
-                if str(x) != "nan" and fdr < config["post_processing"]["buddy_fdr_thr"]
-            ]
-            f0_list.extend(buddy_f)
-        if args.sirius_path != "":
-            sirius_f = (
-                sirius_df.loc[sirius_df["ID"] == idx]
-                .iloc[0][
-                    [
-                        "Pred Formula (1)",
-                        "Pred Formula (2)",
-                        "Pred Formula (3)",
-                        "Pred Formula (4)",
-                        "Pred Formula (5)",
-                    ]
-                ]
-                .tolist()
-            )
-            sirius_score = (
-                sirius_df.loc[sirius_df["ID"] == idx]
-                .iloc[0][
-                    [
-                        "SIRIUS Score (1)",
-                        "SIRIUS Score (2)",
-                        "SIRIUS Score (3)",
-                        "SIRIUS Score (4)",
-                        "SIRIUS Score (5)",
-                    ]
-                ]
-                .tolist()
-            )
-            sirius_f = [
-                x
-                for x, score in zip(sirius_f, sirius_score)
-                if str(x) != "nan"
-                and score > config["post_processing"]["sirius_score_thr"]
-            ]
-            f0_list.extend(sirius_f)
-
-        f0_list = list(set(f0_list))
-        refine_atom_type = list(config["post_processing"]["refine_atom_type"])
-        refine_atom_num = list(config["post_processing"]["refine_atom_num"])
-        for f0 in f0_list:
-            for atom, cnt in formula_to_dict(f0).items():
-                if atom == "H" or atom in refine_atom_type:
-                    continue
-                refine_atom_type.append(atom)
-                refine_atom_num.append(max(1, int(cnt)))
-
-        start_time = time.time()
-        refined_results = formula_refinement(
-            f0_list,
-            m.item(),
-            config["post_processing"]["mass_tolerance"],
-            config["post_processing"]["ppm_mode"],
-            config["post_processing"]["top_k"],
-            config["post_processing"]["maxium_miss_atom_num"],
-            config["post_processing"]["time_out"],
-            refine_atom_type,
-            refine_atom_num,
-        )
-
-        refined_results = rescore_candidates(
-            model,
-            formula_encoder,
-            rescore_head,
-            spec,
-            env,
-            refined_results,
-            device_1st,
-            config["post_processing"]["top_k"],
-        )
-
-        for i, (refined_f, refined_m, refined_s) in enumerate(
-            zip(
-                refined_results["formula"],
-                refined_results["mass"],
-                refined_results["rescore"],
-            )
-        ):
-            formula_redined[f"Refined Formula ({i})"].append(refined_f)
-            mass_redined[f"Refined Mass ({i})"].append(refined_m)
-            rescore_refined[f"Rescore ({i})"].append(refined_s)
-        refinement_time = time.time() - start_time
-        running_time.append(prediction_time + refinement_time)
-
-    # 5. Save the final results
     print("\nSaving predicted results...")
-    out_dict = {
-        "ID": spec_ids,
-        "Y Pred": y_pred,
-        "Mass": exp_mass,
-        "Pred Formula": formula_pred,
-        "Pred Mass": mass_pred.tolist(),
-        "Pred Atom Num": atomnum_pred.tolist(),
-        "Pred H/C Num": hcnum_pred.tolist(),
-        "Running Time": running_time,
-    }
-    res_df = pd.DataFrame(
-        {**out_dict, **formula_redined, **mass_redined, **rescore_refined}
-    )
     res_df.to_csv(args.result_path, index=False)
     print(f"Done! Results saved to {args.result_path}")
 

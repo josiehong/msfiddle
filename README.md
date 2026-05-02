@@ -4,32 +4,42 @@
 [![PyPI](https://img.shields.io/pypi/v/msfiddle)](https://pypi.org/project/msfiddle/)
 [![Documentation](https://readthedocs.org/projects/msfiddle/badge/?version=latest)](https://msfiddle.readthedocs.io)
 
-Source code for the FIDDLE PyPI package featuring:
+`msfiddle` is the PyPI package for FIDDLE, a deep learning method for chemical 
+formula prediction from tandem mass spectra (MS/MS).
 
-* Chemical formula prediction from MS/MS spectra
-* Formula refinement with confidence score estimation
-* Seamless integration with BUDDY and SIRIUS tools
+## Highlights
+
+* Predict molecular formulas from MS/MS spectra with pre-trained FIDDLE models.
+* Use the package from the command line, from native Python arrays, or from MGF files.
+* Reuse loaded models for efficient batched prediction in Python applications.
+* Incorporate BUDDY and SIRIUS candidate outputs in file-based workflows.
 
 Paper: https://www.nature.com/articles/s41467-025-66060-9
 
 Documentation: https://msfiddle.readthedocs.io
 
-For the complete experimental codes, please visit the GitHub repository: https://github.com/JosieHong/FIDDLE
+For the full experimental codebase, see https://github.com/JosieHong/FIDDLE.
 
 ## Installation
 
 ```bash
-# Install msfiddle (without PyTorch)
 pip install msfiddle
 ```
 
-To use `msfiddle`, you need to install `torch` separately with the appropriate version for your system. Please refer to the official PyTorch installation guide:
-🔗 [PyTorch Installation Guide](https://pytorch.org/get-started/locally/).
+PyTorch is required for inference. Install the optional inference extra, 
+or install PyTorch separately for your platform:
+```bash
+pip install "msfiddle[inference]"
+```
 
-## Usage 
+See the official PyTorch installation guide for custom CUDA builds:
+https://pytorch.org/get-started/locally/.
 
-**Step 1**: Download pre-trained models
+## Usage
 
+### Command-line interface
+
+Download the pre-trained checkpoints before running predictions:
 ```bash
 # Download models to the default location (~/.msfiddle/check_point)
 msfiddle-download-models
@@ -39,29 +49,110 @@ msfiddle-download-models --destination /path/to/models \
                           --models fiddle_tcn_qtof fiddle_rescore_qtof
 ```
 
-**Step 2**: Run predictions
+`msfiddle` 2.0.1 reuses the FIDDLE `v2.0.0` checkpoint assets.
 
-Using demo data (simplest option): 
-
+Run the packaged demo:
 ```bash
-# Run prediction with the built-in demo data
 msfiddle --demo --result_path ./output_demo.csv --device 0
 ```
 
-Using your own data:
-
+Run the demo on CPU:
 ```bash
-# Run prediction with your data - automatically selects appropriate model
+msfiddle --demo --result_path ./output_demo.csv --device 0 --no_cuda
+```
+
+Run prediction on your own [MGF file](#mgf-input):
+```bash
 msfiddle --test_data /path/to/data.mgf \
          --instrument_type orbitrap \
          --result_path /path/to/results.csv \
          --device 0
 ```
 
-The `--instrument_type` parameter can be either `orbitrap` (default) or `qtof`. 
+`--instrument_type` accepts `orbitrap` (default) or `qtof`. If checkpoints are
+missing, the CLI exits with instructions to run `msfiddle-download-models`.
 
-Below is an example of input MS/MS data formatted in `.mgf`. The fields `TITLE`, `PRECURSOR_MZ`, `PRECURSOR_TYPE`, and `COLLISION_ENERGY` are required for msfiddle processing: 
+### Python API
 
+Use `predict_from_spectrum` for one-off prediction from native MS/MS arrays:
+
+```python
+from msfiddle import predict_from_spectrum
+
+candidates = predict_from_spectrum(
+    mz_array=[60.0, 85.0, 100.0, 125.0, 150.0],
+    intensity_array=[10.0, 50.0, 20.0, 35.0, 15.0],
+    precursor_mz=180.063,
+    adduct="[M+H]+",
+    top_k=5,
+    instrument_type="orbitrap",
+    collision_energy="Unknown",
+    device="cpu",
+)
+```
+
+For repeated or batched prediction, reuse `MsFiddlePredictor` so checkpoints are
+loaded once:
+```python
+from msfiddle import MsFiddlePredictor
+
+predictor = MsFiddlePredictor(instrument_type="orbitrap", device="cpu")
+
+results = predictor.predict_batch(
+    [
+        {
+            "id": "sample-1",
+            "mz_array": [60.0, 85.0, 100.0, 125.0, 150.0],
+            "intensity_array": [10.0, 50.0, 20.0, 35.0, 15.0],
+            "precursor_mz": 180.063,
+            "adduct": "[M+H]+",
+            "collision_energy": "Unknown",
+        }
+    ]
+)
+```
+
+Python APIs do not download model checkpoints unless `download_models=True` is passed.
+
+## Input and output formats
+
+### CSV output
+
+The CLI writes a CSV file with one row per spectrum. Key columns include:
+
+| Column | Description |
+| --- | --- |
+| `ID` | Spectrum title from the MGF file. |
+| `Mass` | Neutral mass calculated from precursor m/z and adduct. |
+| `Pred Formula` | Initial formula predicted by the neural model. |
+| `Pred Mass` | Model-predicted mass. |
+| `Pred Atom Num` | Model-predicted atom count. |
+| `Pred H/C Num` | Model-predicted H/C count. |
+| `Refined Formula (0..4)` | Ranked refined formula candidates for the default top-5 output. |
+| `Refined Mass (0..4)` | Masses for the default top-5 refined candidates. |
+| `Rescore (0..4)` | Confidence scores for the default top-5 refined candidates. |
+
+### API output
+
+The Python `predict_from_spectrum()` API returns a list of candidate dictionaries:
+```python
+[
+    {
+        "formula": "C8H10O",
+        "score": 0.94,
+        "mass": 122.073,
+        "metadata": {...},
+    }
+]
+```
+
+`predict_batch()` returns one record per input spectrum with `id`, `candidates`,
+and `metadata`.
+
+### MGF input
+
+The required MGF fields are `TITLE`, `PRECURSOR_MZ`, `PRECURSOR_TYPE`, and
+`COLLISION_ENERGY`:
 ```mgf
 BEGIN IONS
 TITLE=EMBL_MCF_2_0_HRMS_Library000529
@@ -86,16 +177,14 @@ SIMULATED_PRECURSOR_MZ=111.01946768634916
 END IONS
 ```
 
-### Additional Options
+## Advanced Usage
 
-Show all model paths:
-
+Inspect checkpoint paths:
 ```bash
 msfiddle-checkpoint-paths
 ```
 
-Advanced usage with custom paths:
-
+Use custom config and checkpoint paths:
 ```bash
 msfiddle --test_data /path/to/data.mgf \
          --config_path /path/to/config.yml \

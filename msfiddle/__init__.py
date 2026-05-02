@@ -2,8 +2,14 @@
 msfiddle: A package for predicting chemical formulas from tandem mass spectra
 """
 
-__version__ = "0.1.0"
+__version__ = "2.0.1"
 
+from .api import (
+    MsFiddlePredictor,
+    predict_batch_from_spectra,
+    predict_from_mgf,
+    predict_from_spectrum,
+)
 from .utils.mol_utils import vector_to_formula, formula_to_vector
 from .utils.msms_utils import mass_calculator
 from .utils.refine_utils import formula_refinement
@@ -12,48 +18,37 @@ from .download import check_models_exist, download_models, get_model_path
 
 def __getattr__(name):
     """Lazy-load torch-dependent components only when accessed."""
-    if name in ("MS2FNet_tcn", "FDRNet"):
-        from .model_tcn import MS2FNet_tcn, FDRNet
+    if name in ("MS2FNet_tcn", "FormulaEncoder", "RescoreHead"):
+        from .model_tcn import FormulaEncoder, MS2FNet_tcn, RescoreHead
 
         globals()["MS2FNet_tcn"] = MS2FNet_tcn
-        globals()["FDRNet"] = FDRNet
+        globals()["FormulaEncoder"] = FormulaEncoder
+        globals()["RescoreHead"] = RescoreHead
         return globals()[name]
-    if name in ("test_step", "rerank_by_fdr"):
-        from .main import test_step, rerank_by_fdr
+    if name in ("test_step", "rescore_candidates"):
+        from .main import rescore_candidates, test_step
 
         globals()["test_step"] = test_step
-        globals()["rerank_by_fdr"] = rerank_by_fdr
+        globals()["rescore_candidates"] = rescore_candidates
         return globals()[name]
     raise AttributeError(f"module 'msfiddle' has no attribute {name!r}")
 
 
-# Check if models are available and print a message if not
-import os
-import warnings
-import sys
-
-# Skip the warning if we're running the download command
-is_download_command = any("download-models" in arg for arg in sys.argv)
-
-if not is_download_command and not check_models_exist():
-    warnings.warn(
-        "Pre-trained models not found. To download them, run:\n"
-        "    msfiddle-download-models\n\n"
-        "Or from Python:\n"
-        "    from msfiddle import download_models\n"
-        "    download_models()"
-    )
-
 __all__ = [
     "__version__",
+    "MsFiddlePredictor",
+    "predict_from_spectrum",
+    "predict_batch_from_spectra",
+    "predict_from_mgf",
     "MS2FNet_tcn",
-    "FDRNet",
+    "FormulaEncoder",
+    "RescoreHead",
     "formula_refinement",
     "mass_calculator",
     "vector_to_formula",
     "formula_to_vector",
     "test_step",
-    "rerank_by_fdr",
+    "rescore_candidates",
     "download_models",
     "check_models_exist",
     "get_model_path",

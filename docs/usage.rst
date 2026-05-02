@@ -10,6 +10,11 @@ Installation
 
 PyTorch must be installed separately following the
 `official PyTorch installation guide <https://pytorch.org/get-started/locally/>`_.
+Alternatively, install the optional inference extra:
+
+.. code-block:: bash
+
+   pip install "msfiddle[inference]"
 
 Downloading Pre-trained Models
 -------------------------------
@@ -78,3 +83,61 @@ incorporated to improve refinement results:
             --device 0
 
 See :doc:`formats` for the required CSV format for BUDDY and SIRIUS inputs.
+
+Python API
+----------
+
+For a single native MS/MS spectrum:
+
+.. code-block:: python
+
+   from msfiddle import predict_from_spectrum
+
+   candidates = predict_from_spectrum(
+       mz_array=[60.0, 85.0, 100.0, 125.0, 150.0],
+       intensity_array=[10.0, 50.0, 20.0, 35.0, 15.0],
+       precursor_mz=180.063,
+       adduct="[M+H]+",
+       top_k=5,
+       instrument_type="orbitrap",
+       collision_energy="Unknown",
+       device="cpu",
+   )
+
+For repeated or batched use, instantiate a predictor once so model checkpoints
+are loaded once and reused:
+
+.. code-block:: python
+
+   from msfiddle import MsFiddlePredictor
+
+   predictor = MsFiddlePredictor(instrument_type="orbitrap", device="cpu")
+   results = predictor.predict_batch(
+       [
+           {
+               "id": "sample-1",
+               "mz_array": [60.0, 85.0, 100.0, 125.0, 150.0],
+               "intensity_array": [10.0, 50.0, 20.0, 35.0, 15.0],
+               "precursor_mz": 180.063,
+               "adduct": "[M+H]+",
+               "collision_energy": "Unknown",
+           }
+       ]
+   )
+
+MGF files can also be used from Python:
+
+.. code-block:: python
+
+   from msfiddle import predict_from_mgf
+
+   df = predict_from_mgf(
+       "/path/to/data.mgf",
+       instrument_type="orbitrap",
+       device="cpu",
+   )
+
+The Python APIs are quiet by default and do not download checkpoints unless
+``download_models=True`` is passed. The CLI also requires checkpoints to be
+downloaded before prediction and prints a checkpoint error with the
+``msfiddle-download-models`` command if they are missing.

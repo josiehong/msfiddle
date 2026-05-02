@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="msfiddle",
-    version="2.0.0",
+    version="2.0.1",
     author="Yuhui Hong",
     author_email="josieexception@outlook.com",
     description="A package for predicting chemical formulas from tandem mass spectra",
@@ -22,7 +22,7 @@ setup(
         "Topic :: Scientific/Engineering :: Bio-Informatics",
         "Topic :: Scientific/Engineering :: Medical Science Apps.",
     ],
-    python_requires=">=3.6",
+    python_requires=">=3.8",
     install_requires=[
         "numpy>=1.20.0,<2.0.0",
         "pandas>=2.0.0",
@@ -35,6 +35,9 @@ setup(
         "molmass",
         "pyteomics",
     ],
+    extras_require={
+        "inference": ["torch"],
+    },
     entry_points={
         "console_scripts": [
             "msfiddle=msfiddle.main:main",

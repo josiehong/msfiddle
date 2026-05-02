@@ -5,6 +5,7 @@ import tempfile
 import urllib.request
 import zipfile
 import argparse
+import re
 from pathlib import Path
 from tqdm import tqdm
 
@@ -13,8 +14,17 @@ from importlib.metadata import (
     PackageNotFoundError as _PackageNotFoundError,
 )
 
+
+def checkpoint_release_for_package_version(package_version):
+    """Return the major-version FIDDLE release tag that contains checkpoints."""
+    match = re.match(r"^(\d+)", str(package_version))
+    if match is None:
+        return f"v{package_version}"
+    return f"v{match.group(1)}.0.0"
+
+
 try:
-    FIDDLE_RELEASE = f"v{_get_version('msfiddle')}"
+    FIDDLE_RELEASE = checkpoint_release_for_package_version(_get_version("msfiddle"))
 except _PackageNotFoundError:
     FIDDLE_RELEASE = "v0.0.0"
 

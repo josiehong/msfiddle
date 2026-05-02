@@ -2,6 +2,19 @@
 
 All notable changes to `msfiddle` will be documented in this file.
 
+## [2.0.1] - 2026-05-02
+
+### Added
+- Added `MsFiddlePredictor` for reusable Python inference with single-spectrum, batch, and MGF prediction methods.
+- Added `predict_from_spectrum`, `predict_batch_from_spectra`, and `predict_from_mgf` convenience APIs.
+- Added the optional `inference` extra for installing PyTorch with `pip install "msfiddle[inference]"`.
+
+### Changed
+- Refactored the CLI to use the shared predictor internals while preserving the existing command-line interface and CSV output shape.
+- Deferred checkpoint warnings/errors until prediction instead of warning during import.
+- Set package metadata to require Python 3.8+, matching the existing pandas 2 dependency.
+- Derived checkpoint downloads from the package major version, so all `2.*.*` releases use the FIDDLE `v2.0.0` checkpoint assets.
+
 ## [2.0.0] - 2026-03-23
 
 ### Changed
