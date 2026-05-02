@@ -4,7 +4,7 @@
 [![PyPI](https://img.shields.io/pypi/v/msfiddle)](https://pypi.org/project/msfiddle/)
 [![Documentation](https://readthedocs.org/projects/msfiddle/badge/?version=latest)](https://msfiddle.readthedocs.io)
 
-`msfiddle` is the PyPI package for FIDDLE, a deep learning method for chemical
+`msfiddle` is the PyPI package for FIDDLE, a deep learning method for chemical 
 formula prediction from tandem mass spectra (MS/MS).
 
 ## Highlights
@@ -26,9 +26,8 @@ For the full experimental codebase, see https://github.com/JosieHong/FIDDLE.
 pip install msfiddle
 ```
 
-PyTorch is required for inference. Install the optional inference extra, or
-install PyTorch separately for your platform:
-
+PyTorch is required for inference. Install the optional inference extra, 
+or install PyTorch separately for your platform:
 ```bash
 pip install "msfiddle[inference]"
 ```
@@ -38,10 +37,9 @@ https://pytorch.org/get-started/locally/.
 
 ## Usage
 
-### Command-Line Interface
+### Command-line interface
 
 Download the pre-trained checkpoints before running predictions:
-
 ```bash
 # Download models to the default location (~/.msfiddle/check_point)
 msfiddle-download-models
@@ -51,14 +49,19 @@ msfiddle-download-models --destination /path/to/models \
                           --models fiddle_tcn_qtof fiddle_rescore_qtof
 ```
 
-Run the packaged demo:
+`msfiddle` 2.0.1 reuses the FIDDLE `v2.0.0` checkpoint assets.
 
+Run the packaged demo:
 ```bash
 msfiddle --demo --result_path ./output_demo.csv --device 0
 ```
 
-Run prediction on your own MGF file:
+Run the demo on CPU:
+```bash
+msfiddle --demo --result_path ./output_demo.csv --device 0 --no_cuda
+```
 
+Run prediction on your own [MGF file](#mgf-input):
 ```bash
 msfiddle --test_data /path/to/data.mgf \
          --instrument_type orbitrap \
@@ -90,7 +93,6 @@ candidates = predict_from_spectrum(
 
 For repeated or batched prediction, reuse `MsFiddlePredictor` so checkpoints are
 loaded once:
-
 ```python
 from msfiddle import MsFiddlePredictor
 
@@ -110,14 +112,47 @@ results = predictor.predict_batch(
 )
 ```
 
-Python APIs do not download model checkpoints unless `download_models=True` is
-passed.
+Python APIs do not download model checkpoints unless `download_models=True` is passed.
 
-### MGF Input
+## Input and output formats
+
+### CSV output
+
+The CLI writes a CSV file with one row per spectrum. Key columns include:
+
+| Column | Description |
+| --- | --- |
+| `ID` | Spectrum title from the MGF file. |
+| `Mass` | Neutral mass calculated from precursor m/z and adduct. |
+| `Pred Formula` | Initial formula predicted by the neural model. |
+| `Pred Mass` | Model-predicted mass. |
+| `Pred Atom Num` | Model-predicted atom count. |
+| `Pred H/C Num` | Model-predicted H/C count. |
+| `Refined Formula (0..4)` | Ranked refined formula candidates for the default top-5 output. |
+| `Refined Mass (0..4)` | Masses for the default top-5 refined candidates. |
+| `Rescore (0..4)` | Confidence scores for the default top-5 refined candidates. |
+
+### API output
+
+The Python `predict_from_spectrum()` API returns a list of candidate dictionaries:
+```python
+[
+    {
+        "formula": "C8H10O",
+        "score": 0.94,
+        "mass": 122.073,
+        "metadata": {...},
+    }
+]
+```
+
+`predict_batch()` returns one record per input spectrum with `id`, `candidates`,
+and `metadata`.
+
+### MGF input
 
 The required MGF fields are `TITLE`, `PRECURSOR_MZ`, `PRECURSOR_TYPE`, and
 `COLLISION_ENERGY`:
-
 ```mgf
 BEGIN IONS
 TITLE=EMBL_MCF_2_0_HRMS_Library000529
@@ -142,16 +177,14 @@ SIMULATED_PRECURSOR_MZ=111.01946768634916
 END IONS
 ```
 
-### Advanced Options
+## Advanced Usage
 
 Inspect checkpoint paths:
-
 ```bash
 msfiddle-checkpoint-paths
 ```
 
 Use custom config and checkpoint paths:
-
 ```bash
 msfiddle --test_data /path/to/data.mgf \
          --config_path /path/to/config.yml \

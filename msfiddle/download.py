@@ -13,8 +13,24 @@ from importlib.metadata import (
     PackageNotFoundError as _PackageNotFoundError,
 )
 
+
+CHECKPOINT_RELEASE_OVERRIDES = {
+    # msfiddle 2.0.1 changes Python/API packaging only. It reuses the 2.0.0
+    # model checkpoints so users do not need a duplicate FIDDLE release.
+    "2.0.1": "v2.0.0",
+}
+
+
+def checkpoint_release_for_package_version(package_version):
+    """Return the FIDDLE release tag that contains checkpoint assets."""
+    return CHECKPOINT_RELEASE_OVERRIDES.get(
+        package_version,
+        f"v{package_version}",
+    )
+
+
 try:
-    FIDDLE_RELEASE = f"v{_get_version('msfiddle')}"
+    FIDDLE_RELEASE = checkpoint_release_for_package_version(_get_version("msfiddle"))
 except _PackageNotFoundError:
     FIDDLE_RELEASE = "v0.0.0"
 

@@ -13,6 +13,7 @@ All notable changes to `msfiddle` will be documented in this file.
 - Refactored the CLI to use the shared predictor internals while preserving the existing command-line interface and CSV output shape.
 - Deferred checkpoint warnings/errors until prediction instead of warning during import.
 - Set package metadata to require Python 3.8+, matching the existing pandas 2 dependency.
+- Reused the FIDDLE `v2.0.0` checkpoint release for `msfiddle` 2.0.1 downloads.
 
 ## [2.0.0] - 2026-03-23
 
