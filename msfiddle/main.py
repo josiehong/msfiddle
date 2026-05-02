@@ -1,24 +1,7 @@
 import os
 import argparse
 import sys
-from tqdm import tqdm
-import yaml
-import time
 
-import numpy as np
-import pandas as pd
-from collections import OrderedDict
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils.data import DataLoader
-
-from .dataset import MGFDataset
-from .model_tcn import MS2FNet_tcn, FormulaEncoder, RescoreHead
-from .utils.mol_utils import vector_to_formula, formula_to_vector, formula_to_dict
-from .utils.msms_utils import mass_calculator
-from .utils.refine_utils import formula_refinement
 from .download import get_checkpoint_dir
 from .api import MsFiddlePredictor
 
@@ -37,15 +20,16 @@ def _checkpoint_error_message(missing_paths):
 
 def validate_checkpoint_paths(resume_path, rescore_resume_path):
     missing_paths = [
-        path
-        for path in (resume_path, rescore_resume_path)
-        if not os.path.exists(path)
+        path for path in (resume_path, rescore_resume_path) if not os.path.exists(path)
     ]
     if missing_paths:
         raise FileNotFoundError(_checkpoint_error_message(missing_paths))
 
 
 def test_step(model, loader, device):
+    import torch
+    from tqdm import tqdm
+
     model.eval()
     spec_ids = []
     y_pred = []
@@ -101,6 +85,12 @@ def rescore_candidates(
     Score = sigmoid(RescoreHead(z_spec ⊙ FormulaEncoder(formula_vec))).
     Candidates are ranked by rescore score directly.
     """
+    import numpy as np
+    import torch
+    import torch.nn.functional as F
+
+    from .utils.mol_utils import formula_to_vector
+
     formula_encoder.eval()
     rescore_head.eval()
     spec_encoder.eval()
@@ -144,9 +134,16 @@ def rescore_candidates(
 
 
 def init_random_seed(seed):
+    import numpy as np
+
     np.random.seed(seed)
+    try:
+        import torch
+    except ImportError:
+        return
     torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
     return
 
 
