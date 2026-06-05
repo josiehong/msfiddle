@@ -2,6 +2,15 @@
 
 All notable changes to `msfiddle` will be documented in this file.
 
+## [2.0.2] - 2026-06-05
+
+### Added
+- Accept native/original BUDDY/msbuddy output for `--buddy_path` (and the Python API): an `msbuddy_result_summary.tsv` file, or the full output directory. When the directory contains per-query `formula_results.tsv` files (msbuddy `-d`), their per-candidate FDR scores are used for ranks 2–5.
+- Accept native/original SIRIUS formula summaries for `--sirius_path` (and the Python API): a `formula_identifications` file (TSV/CSV/XLSX) or a SIRIUS summary output directory.
+
+### Deprecated
+- The msfiddle-normalized BUDDY and SIRIUS CSV formats are deprecated and will be removed in 3.0.0. Pass native/original msbuddy or SIRIUS output instead. Loading a normalized CSV now emits a `DeprecationWarning`.
+
 ## [2.0.1] - 2026-05-02
 
 ### Added

@@ -20,6 +20,7 @@ from pyteomics import mgf
 
 from .download import download_models as download_pretrained_models
 from .download import get_checkpoint_dir
+from .external_results import load_buddy_results, load_sirius_results
 from .utils.mol_utils import (
     ATOMS_INDEX,
     formula_to_dict,
@@ -198,6 +199,10 @@ class MsFiddlePredictor:
     ) -> pd.DataFrame:
         """Predict formulas for spectra in an MGF file.
 
+        ``buddy_path`` and ``sirius_path`` may point to either native/original
+        BUDDY/msbuddy and SIRIUS formula-identification outputs or legacy
+        msfiddle-normalized CSV files.
+
         The returned DataFrame uses the same result columns as the CLI CSV.
         """
 
@@ -212,8 +217,8 @@ class MsFiddlePredictor:
         encoded = self._load_mgf_spectra(test_data_path)
         predictions = self._predict_encoded(encoded, batch_size=batch_size)
 
-        buddy_df = pd.read_csv(buddy_path) if buddy_path else None
-        sirius_df = pd.read_csv(sirius_path) if sirius_path else None
+        buddy_df = load_buddy_results(buddy_path) if buddy_path else None
+        sirius_df = load_sirius_results(sirius_path) if sirius_path else None
 
         refined_formula = {f"Refined Formula ({k})": [] for k in range(top_k)}
         refined_mass = {f"Refined Mass ({k})": [] for k in range(top_k)}
@@ -787,7 +792,8 @@ class MsFiddlePredictor:
                 candidates.extend(
                     formula
                     for formula, score in zip(formulas, scores)
-                    if str(formula) != "nan"
+                    if _is_external_formula(formula)
+                    and pd.notna(score)
                     and score < self.config["post_processing"]["buddy_fdr_thr"]
                 )
         if sirius_df is not None:
@@ -815,7 +821,8 @@ class MsFiddlePredictor:
                 candidates.extend(
                     formula
                     for formula, score in zip(formulas, scores)
-                    if str(formula) != "nan"
+                    if _is_external_formula(formula)
+                    and pd.notna(score)
                     and score > self.config["post_processing"]["sirius_score_thr"]
                 )
         return candidates
@@ -932,6 +939,12 @@ def _normalize_instrument_type(instrument_type: str) -> str:
             f"{sorted(_INSTRUMENT_TYPES)}, got {instrument_type!r}"
         )
     return normalized
+
+
+def _is_external_formula(value: object) -> bool:
+    if pd.isna(value):
+        return False
+    return str(value).strip().lower() not in {"", "na", "nan", "none", "null", "<na>"}
 
 
 def _load_config(config_path: Path) -> dict[str, Any]:

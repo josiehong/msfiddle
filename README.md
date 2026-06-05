@@ -49,7 +49,7 @@ msfiddle-download-models --destination /path/to/models \
                           --models fiddle_tcn_qtof fiddle_rescore_qtof
 ```
 
-`msfiddle` 2.0.1 reuses the FIDDLE `v2.0.0` checkpoint assets.
+All `msfiddle` 2.x releases reuse the FIDDLE `v2.0.0` checkpoint assets.
 
 Run the packaged demo:
 ```bash
@@ -148,6 +148,44 @@ The Python `predict_from_spectrum()` API returns a list of candidate dictionarie
 
 `predict_batch()` returns one record per input spectrum with `id`, `candidates`,
 and `metadata`.
+
+### Native/original BUDDY and SIRIUS outputs
+
+Use the same MGF input file to generate native
+[BUDDY/msbuddy](https://msbuddy.readthedocs.io/en/latest/cmdapi.html) and
+[SIRIUS](https://v6.docs.sirius-ms.io/cli/) outputs. `msfiddle` accepts these
+native/original files directly through `--buddy_path` and `--sirius_path`. The
+older msfiddle-normalized CSV formats documented in `docs/formats.rst` are
+**deprecated** and will be removed in `msfiddle` 3.0.0; loading them emits a
+`DeprecationWarning`.
+
+```bash
+msbuddy -mgf /path/to/data.mgf \
+        -output /path/to/buddy_output \
+        -ms orbitrap \
+        -p -n_cpu 12 \
+        -d -hal
+```
+
+`msbuddy` writes `msbuddy_result_summary.tsv`; `-d` also writes detailed
+per-query `formula_results.tsv` files. Pass either the summary file or the
+output directory to `--buddy_path`. The full output directory is preferred
+because it includes per-candidate FDR scores for ranks beyond rank 1.
+
+```bash
+sirius --input /path/to/data.mgf \
+       --project /path/to/sirius_project \
+       formulas --profile orbitrap
+
+sirius --project /path/to/sirius_project \
+       summaries --top-k-summary=5 \
+       --output /path/to/sirius_output
+```
+
+SIRIUS writes a project space and exports summary files such as
+`formula_identifications.tsv`. Pass either a formula-identification summary file
+or the summary output directory to `--sirius_path`.
+SIRIUS 6 may require `sirius login` before formula computation.
 
 ### MGF input
 

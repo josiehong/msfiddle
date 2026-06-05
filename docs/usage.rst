@@ -70,19 +70,64 @@ Running Predictions
 Integration with BUDDY and SIRIUS
 -----------------------------------
 
-Candidate formulas from `BUDDY <https://github.com/Philipp-Sc/buddy>`_ and
-`SIRIUS <https://bio.informatik.uni-jena.de/software/sirius/>`_ can be
-incorporated to improve refinement results:
+Candidate formulas from the `BUDDY/msbuddy command-line tool
+<https://msbuddy.readthedocs.io/en/latest/cmdapi.html>`_ and the
+`SIRIUS command-line interface <https://v6.docs.sirius-ms.io/cli/>`_ can be
+incorporated to improve refinement results. ``--buddy_path`` and
+``--sirius_path`` accept native/original tool outputs. The older
+msfiddle-normalized CSV files are still accepted but are deprecated and will be
+removed in ``msfiddle`` 3.0.0.
+
+First, run BUDDY/msbuddy with the same MGF file:
+
+.. code-block:: bash
+
+   msbuddy -mgf /path/to/data.mgf \
+           -output /path/to/buddy_output \
+           -ms orbitrap \
+           -d
+
+``msbuddy`` writes ``msbuddy_result_summary.tsv`` in the output directory.
+When ``-d`` is used, it also writes per-spectrum ``formula_results.tsv`` files
+with per-candidate FDR scores. Passing the full output directory to
+``msfiddle`` is preferred because those detailed scores can be used directly.
+If only ``msbuddy_result_summary.tsv`` is passed, only rank 1 has an FDR score
+and lower ranks are not used by the FDR threshold. See the
+`msbuddy command-line API <https://msbuddy.readthedocs.io/en/latest/cmdapi.html>`_
+for the full option list.
+
+Next, run SIRIUS and export formula summaries:
+
+.. code-block:: bash
+
+   sirius --input /path/to/data.mgf \
+          --project /path/to/sirius_project \
+          formulas --profile orbitrap
+
+   sirius --project /path/to/sirius_project \
+          summaries --top-k-summary=5 \
+          --output /path/to/sirius_output
+
+SIRIUS writes formula summary files such as
+``formula_identifications.tsv`` or ``formula_identifications_top-5.tsv``.
+SIRIUS 6 may require ``sirius login`` before formula computation. See the
+`SIRIUS command-line interface <https://v6.docs.sirius-ms.io/cli/>`_ for
+workflow details and the full option list.
+
+Then pass those native/original outputs to ``msfiddle``:
 
 .. code-block:: bash
 
    msfiddle --test_data /path/to/data.mgf \
-            --buddy_path /path/to/buddy_results.csv \
-            --sirius_path /path/to/sirius_results.csv \
+            --buddy_path /path/to/buddy_output \
+            --sirius_path /path/to/sirius_output \
             --result_path /path/to/results.csv \
             --device 0
 
-See :doc:`formats` for the required CSV format for BUDDY and SIRIUS inputs.
+You can also pass ``/path/to/buddy_output/msbuddy_result_summary.tsv`` or an
+individual SIRIUS formula summary file directly. If only one external tool is
+available, omit the other option. See :doc:`formats` for the native formats
+and the deprecated msfiddle-normalized schemas.
 
 Python API
 ----------
