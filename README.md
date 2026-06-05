@@ -23,17 +23,13 @@ For the full experimental codebase, see https://github.com/JosieHong/FIDDLE.
 ## Installation
 
 ```bash
-pip install msfiddle
+pip install msfiddle              # base install, no PyTorch
+pip install "msfiddle[inference]" # base install + PyTorch (needed for predictions and the CLI)
 ```
 
-PyTorch is required for inference. Install the optional inference extra, 
-or install PyTorch separately for your platform:
-```bash
-pip install "msfiddle[inference]"
-```
-
-See the official PyTorch installation guide for custom CUDA builds:
-https://pytorch.org/get-started/locally/.
+For a custom PyTorch build (CUDA, ROCm, Apple Silicon, etc.), install torch
+first via the [official guide](https://pytorch.org/get-started/locally/), then
+`pip install msfiddle`.
 
 ## Usage
 
