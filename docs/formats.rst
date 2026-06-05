@@ -165,7 +165,7 @@ are therefore ignored by the configured FDR threshold.
 msfiddle-normalized BUDDY CSV schema (deprecated)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. deprecated:: 2.0.2
+.. deprecated:: 2.1.0
    Use native msbuddy output instead. The msfiddle-normalized BUDDY CSV format
    will be removed in ``msfiddle`` 3.0.0; loading it emits a
    ``DeprecationWarning``.
@@ -205,7 +205,7 @@ keeps the top five candidates per spectrum.
 msfiddle-normalized SIRIUS CSV schema (deprecated)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. deprecated:: 2.0.2
+.. deprecated:: 2.1.0
    Use native SIRIUS output instead. The msfiddle-normalized SIRIUS CSV format
    will be removed in ``msfiddle`` 3.0.0; loading it emits a
    ``DeprecationWarning``.

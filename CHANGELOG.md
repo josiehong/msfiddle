@@ -2,7 +2,7 @@
 
 All notable changes to `msfiddle` will be documented in this file.
 
-## [2.0.2] - 2026-06-05
+## [2.1.0] - 2026-06-05
 
 ### Added
 - Accept native/original BUDDY/msbuddy output for `--buddy_path` (and the Python API): an `msbuddy_result_summary.tsv` file, or the full output directory. When the directory contains per-query `formula_results.tsv` files (msbuddy `-d`), their per-candidate FDR scores are used for ranks 2–5.
