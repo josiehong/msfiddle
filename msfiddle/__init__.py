@@ -2,7 +2,12 @@
 msfiddle: A package for predicting chemical formulas from tandem mass spectra
 """
 
-__version__ = "2.0.1"
+from importlib.metadata import PackageNotFoundError, version as _pkg_version
+
+try:
+    __version__ = _pkg_version("msfiddle")
+except PackageNotFoundError:  # running from a source checkout without install
+    __version__ = "0.0.0+unknown"
 
 from .api import (
     MsFiddlePredictor,

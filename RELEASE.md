@@ -14,10 +14,18 @@ In `setup.py`, bump the version number:
 version="0.2.0",  # e.g. 0.1.0 → 0.2.0
 ```
 
+`setup.py` is the single source of truth — `msfiddle.__version__` is derived
+from the installed package metadata via `importlib.metadata`, so no other
+file needs editing.
+
 Follow [semantic versioning](https://semver.org/):
 - `0.0.x` — bug fixes
 - `0.x.0` — new features, backwards compatible
 - `x.0.0` — breaking changes
+
+Checkpoints are pinned to the major version (see step 7): all `x.y.z`
+releases share the FIDDLE `x.0.0` checkpoint assets, so minor and patch
+bumps do **not** require a new FIDDLE release.
 
 ## 3. Update CHANGELOG.md
 

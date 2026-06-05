@@ -173,10 +173,25 @@ def main():
 
     # Add optional arguments
     parser.add_argument(
-        "--buddy_path", type=str, default="", help="Path to saved BUDDY's results"
+        "--buddy_path",
+        type=str,
+        default="",
+        help=(
+            "Path to BUDDY results: native/original msbuddy output directory "
+            "or summary TSV. The msfiddle-normalized CSV is also accepted but "
+            "deprecated and will be removed in 3.0.0."
+        ),
     )
     parser.add_argument(
-        "--sirius_path", type=str, default="", help="Path to saved SIRIUS's results"
+        "--sirius_path",
+        type=str,
+        default="",
+        help=(
+            "Path to SIRIUS results: native/original formula_identifications "
+            "summary or SIRIUS summary output directory. The "
+            "msfiddle-normalized CSV is also accepted but deprecated and will "
+            "be removed in 3.0.0."
+        ),
     )
     parser.add_argument(
         "--seed", type=int, default=42, help="Seed for random functions"
